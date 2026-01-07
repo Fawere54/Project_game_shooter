@@ -6,7 +6,6 @@ SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 SCREEN_TITLE = "Сигма-орбита"
 PLAYER_SPEED = 7  # Скорость движения игрока
-game = True
 
 
 class Bullet(arcade.Sprite):
@@ -33,6 +32,35 @@ class Enemy(arcade.Sprite):
         self.center_y -= self.speed
 
 
+class Button:
+    def __init__(self, x, y, width, height, text="", color=()):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.text = text
+        self.color = color
+
+    def draw(self):
+        # Рисуем прямоугольник кнопки
+        arcade.draw_rect_filled(arcade.rect.XYWH(self.x, self.y, self.width, self.height), self.color)
+
+        # Рисуем текст
+        if self.text:
+            arcade.draw_text(self.text, self.x, self.y,
+                             arcade.color.WHITE, 20,
+                             align="center", anchor_x="center", anchor_y="center")
+
+    def is_clicked(self, x, y):
+        """Проверяет, был ли клик по кнопке"""
+        left = self.x - self.width / 2
+        right = self.x + self.width / 2
+        bottom = self.y - self.height / 2
+        top = self.y + self.height / 2
+
+        return left <= x <= right and bottom <= y <= top
+
+
 class MyGame(arcade.Window):
     def __init__(self):
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
@@ -49,10 +77,19 @@ class MyGame(arcade.Window):
         self.bg_game2.width = SCREEN_WIDTH
         self.bg_game2.height = 1400
 
+        self.bg_menu = arcade.Sprite("files/galaxy.jpg", scale=1.0)
+        self.bg_menu.center_x = SCREEN_WIDTH // 2
+        self.bg_menu.center_y = SCREEN_HEIGHT // 2
+        self.bg_menu.width = SCREEN_WIDTH
+        self.bg_menu.height = SCREEN_HEIGHT
+
+        self.menu_sprite = arcade.SpriteList()
+        self.menu_sprite.append(self.bg_menu)
+
         # Создаем список для всех спрайтов
-        self.all_sprites = arcade.SpriteList()
-        self.all_sprites.append(self.bg_game1)
-        self.all_sprites.append(self.bg_game2)
+        self.bg_game = arcade.SpriteList()
+        self.bg_game.append(self.bg_game1)
+        self.bg_game.append(self.bg_game2)
 
         # Создаем спрайт игрока
         self.player_sprite = arcade.Sprite("files/Player.png", scale=0.5)
@@ -67,12 +104,15 @@ class MyGame(arcade.Window):
         self.bullets_list = arcade.SpriteList()
         self.enemy_list = arcade.SpriteList()
 
+        self.button_play = Button(SCREEN_WIDTH//2, SCREEN_HEIGHT//2, 100, 75, "play", (98, 99, 155))
+
         # Создаем флаги
         self.left_pressed = False
         self.right_pressed = False
         self.up_pressed = False
         self.down_pressed = False
-        self.game = True
+        self.game = False
+        self.menu = True
 
         # Создаем 3 врага
         self.create_enemy()
@@ -85,15 +125,21 @@ class MyGame(arcade.Window):
     def on_draw(self):
         # Отрисовка всех спрайтов
         self.clear()
-        self.all_sprites.draw()
-        self.player_sprites.draw()
-        self.bullets_list.draw()
-        self.enemy_list.draw()
-        if not self.game:
+        if self.menu:
+            self.menu_sprite.draw()
+            self.button_play.draw()
+        elif self.game:
+            self.bg_game.draw()
+            self.player_sprites.draw()
+            self.bullets_list.draw()
+            self.enemy_list.draw()
+        else:
             arcade.draw_text("Game Over!", 310, 290, (255, 0, 0), 30)
 
     def on_update(self, delta_time):
-        if self.game:
+        if self.menu:
+            pass
+        elif self.game:
             # Обновляем позицию игрока в зависимости от нажатых клавиш
             if self.left_pressed and not self.right_pressed:
                 self.player_sprite.center_x -= PLAYER_SPEED
@@ -171,10 +217,15 @@ class MyGame(arcade.Window):
 
     def on_mouse_press(self, x, y, button, modifiers):
         # Создаем лазер при ПКМ
-        self.bullet = Bullet("files/laser.png", 0.3, 10)
-        self.bullet.center_x = self.player_sprite.center_x
-        self.bullet.center_y = self.player_sprite.center_y + self.player_sprite.height / 2
-        self.bullets_list.append(self.bullet)
+        if self.menu:
+            if self.button_play.is_clicked(x, y):
+                self.game = True
+                self.menu = False
+        elif self.game:
+            self.bullet = Bullet("files/laser.png", 0.3, 10)
+            self.bullet.center_x = self.player_sprite.center_x
+            self.bullet.center_y = self.player_sprite.center_y + self.player_sprite.height / 2
+            self.bullets_list.append(self.bullet)
 
     def create_enemy(self):
         self.enemy = Enemy("files/enemyShip1.png", 0.5, random.randint(3, 5))
@@ -184,11 +235,9 @@ class MyGame(arcade.Window):
 
 
 def main():
-    global game
-    if game:
-        game = MyGame()
-        game.setup()
-        arcade.run()
+    game = MyGame()
+    game.setup()
+    arcade.run()
 
 
 if __name__ == "__main__":
