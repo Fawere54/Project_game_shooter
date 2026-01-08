@@ -123,13 +123,13 @@ class MyGame(arcade.Window):
     def __init__(self):
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
         # Создаем фон
-        self.bg_game1 = arcade.Sprite("files/bg_space.jpg", scale=1.0)
+        self.bg_game1 = arcade.Sprite("files/bg_space.png", scale=1.0)
         self.bg_game1.center_x = SCREEN_WIDTH // 2
         self.bg_game1.center_y = 700
         self.bg_game1.width = SCREEN_WIDTH
         self.bg_game1.height = 1400
 
-        self.bg_game2 = arcade.Sprite("files/bg_space.jpg", scale=1.0)
+        self.bg_game2 = arcade.Sprite("files/bg_space.png", scale=1.0)
         self.bg_game2.center_x = SCREEN_WIDTH // 2
         self.bg_game2.center_y = 700
         self.bg_game2.width = SCREEN_WIDTH
