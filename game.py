@@ -1,5 +1,63 @@
 import arcade
 import random
+from arcade.particles import FadeParticle, Emitter, EmitBurst
+
+SPARK_TEX = [
+    arcade.make_soft_circle_texture(8, arcade.color.PASTEL_YELLOW),
+    arcade.make_soft_circle_texture(8, arcade.color.PEACH),
+    arcade.make_soft_circle_texture(8, arcade.color.BABY_BLUE),
+    arcade.make_soft_circle_texture(8, arcade.color.ELECTRIC_CRIMSON),
+]
+
+SMOKE_TEX = arcade.make_soft_circle_texture(20, arcade.color.LIGHT_GRAY, 255, 80)
+
+def gravity_drag(p):
+    p.change_y += -0.03
+    p.change_x *= 0.92
+    p.change_y *= 0.92
+
+
+def smoke_mutator(p):
+    p.scale_x *= 1.02
+    p.scale_y *= 1.02
+    p.alpha = max(0, p.alpha - 2)
+
+def create_explosion(x, y):
+    emitters = []
+
+    emitters.append(
+        Emitter(
+            center_xy=(x, y),
+            emit_controller=EmitBurst(80),
+            particle_factory=lambda e: FadeParticle(
+                filename_or_texture=random.choice(SPARK_TEX),
+                change_xy=arcade.math.rand_in_circle((0, 0), 9),
+                lifetime=random.uniform(0.5, 1.1),
+                start_alpha=255,
+                end_alpha=0,
+                scale=random.uniform(0.35, 0.6),
+                mutation_callback=gravity_drag,
+            ),
+        )
+    )
+
+    emitters.append(
+        Emitter(
+            center_xy=(x, y),
+            emit_controller=EmitBurst(12),
+            particle_factory=lambda e: FadeParticle(
+                filename_or_texture=SMOKE_TEX,
+                change_xy=arcade.math.rand_in_circle((0, 0), 0.6),
+                lifetime=random.uniform(1.5, 2.5),
+                start_alpha=200,
+                end_alpha=0,
+                scale=random.uniform(0.6, 0.9),
+                mutation_callback=smoke_mutator,
+            ),
+        )
+    )
+
+    return emitters
 
 # Параметры экрана
 SCREEN_WIDTH = 800
@@ -114,6 +172,8 @@ class MyGame(arcade.Window):
         self.game = False
         self.menu = True
 
+        self.emitters = []
+
         # Счет
         self.score = 0
 
@@ -137,13 +197,18 @@ class MyGame(arcade.Window):
         if self.menu:
             self.menu_sprite.draw()
             self.button_play.draw()
+
         elif self.game:
             self.bg_game.draw()
+
+            for e in self.emitters:
+                e.draw()
+
             self.player_sprites.draw()
             self.bullets_list.draw()
             self.enemy_list.draw()
-            # Отрисовка счета в правом верхнем углу
             self.draw_score()
+
         else:
             # Экран Game Over с отображением финального счета
             arcade.draw_text("Game Over!", 310, 350, arcade.color.RED, 30)
@@ -209,13 +274,17 @@ class MyGame(arcade.Window):
                 hit_list = arcade.check_for_collision_with_list(bullet, self.enemy_list)
                 if hit_list:
                     bullet.remove_from_sprite_lists()
-                    # Воспроизводим звук взрыва при попадании
-                    if self.explosion_sound:
-                        arcade.play_sound(self.explosion_sound, volume=0.3)
 
                     for enemy in hit_list:
+                        # ВЗРЫВ В ТОЧКЕ ВРАГА
+                        explosion = create_explosion(enemy.center_x, enemy.center_y)
+                        self.emitters.extend(explosion)
+
+                        if self.explosion_sound:
+                            arcade.play_sound(self.explosion_sound, volume=0.3)
+
                         enemy.remove_from_sprite_lists()
-                        self.score += 10  # Увеличиваем счет за каждого убитого врага
+                        self.score += 10
                         self.create_enemy()
 
             for enemy in self.enemy_list:
@@ -236,6 +305,11 @@ class MyGame(arcade.Window):
                 self.bg_game2.center_y = 1300
             if self.bg_game2.center_y == -100:
                 self.bg_game1.center_y = 1300
+
+            for e in self.emitters[:]:
+                e.update(delta_time)
+                if e.can_reap():
+                    self.emitters.remove(e)
         else:
             pass
 
