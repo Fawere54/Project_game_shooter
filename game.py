@@ -104,7 +104,7 @@ class MyGame(arcade.Window):
         self.bullets_list = arcade.SpriteList()
         self.enemy_list = arcade.SpriteList()
 
-        self.button_play = Button(SCREEN_WIDTH//2, SCREEN_HEIGHT//2, 100, 75, "play", (98, 99, 155))
+        self.button_play = Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, 100, 75, "play", (98, 99, 155))
 
         # Создаем флаги
         self.left_pressed = False
@@ -114,13 +114,22 @@ class MyGame(arcade.Window):
         self.game = False
         self.menu = True
 
+        # Счет
+        self.score = 0
+
         # Создаем 3 врага
         self.create_enemy()
         self.create_enemy()
         self.create_enemy()
 
     def setup(self):
-        pass
+        self.shoot_sound = arcade.load_sound("files/shoot.wav")
+        self.background_music = arcade.load_sound("files/space.ogg")
+        self.game_over_sound = arcade.load_sound("files/game_over.wav")
+        self.explosion_sound = arcade.load_sound("files/explosion.wav")
+        # Включаем фоновую музыку
+        if self.background_music:
+            self.background_player = self.background_music.play(loop=True, volume=0.3)
 
     def on_draw(self):
         # Отрисовка всех спрайтов
@@ -133,8 +142,39 @@ class MyGame(arcade.Window):
             self.player_sprites.draw()
             self.bullets_list.draw()
             self.enemy_list.draw()
+            # Отрисовка счета в правом верхнем углу
+            self.draw_score()
         else:
-            arcade.draw_text("Game Over!", 310, 290, (255, 0, 0), 30)
+            # Экран Game Over с отображением финального счета
+            arcade.draw_text("Game Over!", 310, 350, arcade.color.RED, 30)
+            arcade.draw_text(f"Final Score: {self.score}",
+                             SCREEN_WIDTH // 2,
+                             SCREEN_HEIGHT // 2 - 50,
+                             arcade.color.WHITE,
+                             24,
+                             align="center",
+                             anchor_x="center")
+
+    def draw_score(self):
+        """Отрисовка счета в правом верхнем углу экрана"""
+        score_text = f"Score: {self.score}"
+
+        arcade.draw_rect_filled(
+            arcade.rect.XYWH(SCREEN_WIDTH - 100, SCREEN_HEIGHT - 30, 200, 60),
+            (54, 187, 245, 255)
+        )
+
+        arcade.draw_text(
+            score_text,
+            SCREEN_WIDTH - 100,
+            SCREEN_HEIGHT - 30,
+            arcade.color.WHITE,
+            30,
+            align="center",
+            anchor_x="center",
+            anchor_y="center",
+            bold=True
+        )
 
     def on_update(self, delta_time):
         if self.menu:
@@ -169,8 +209,13 @@ class MyGame(arcade.Window):
                 hit_list = arcade.check_for_collision_with_list(bullet, self.enemy_list)
                 if hit_list:
                     bullet.remove_from_sprite_lists()
+                    # Воспроизводим звук взрыва при попадании
+                    if self.explosion_sound:
+                        arcade.play_sound(self.explosion_sound, volume=0.3)
+
                     for enemy in hit_list:
                         enemy.remove_from_sprite_lists()
+                        self.score += 10  # Увеличиваем счет за каждого убитого врага
                         self.create_enemy()
 
             for enemy in self.enemy_list:
@@ -179,19 +224,20 @@ class MyGame(arcade.Window):
                     enemy.remove_from_sprite_lists()
                     for player in hit_list:
                         player.remove_from_sprite_lists()
-                        self.game = False
+                    if self.background_player:
+                        self.background_player.pause()
+                    if self.game_over_sound:
+                        arcade.play_sound(self.game_over_sound, volume=0.5)
+                    self.game = False
 
             self.bg_game1.center_y -= 2
             self.bg_game2.center_y -= 2
-
             if self.bg_game1.center_y == -100:
                 self.bg_game2.center_y = 1300
-
             if self.bg_game2.center_y == -100:
                 self.bg_game1.center_y = 1300
         else:
-            arcade.draw_text("Game Over!", SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, (255, 0, 0), 15)
-
+            pass
 
     def on_key_press(self, key, modifiers):
         # Обработка нажатий клавиш для управления игроком
@@ -221,15 +267,17 @@ class MyGame(arcade.Window):
             if self.button_play.is_clicked(x, y):
                 self.game = True
                 self.menu = False
-        elif self.game:
+        elif self.game and button == arcade.MOUSE_BUTTON_RIGHT:
             self.bullet = Bullet("files/laser.png", 0.3, 10)
             self.bullet.center_x = self.player_sprite.center_x
             self.bullet.center_y = self.player_sprite.center_y + self.player_sprite.height / 2
             self.bullets_list.append(self.bullet)
+            if self.shoot_sound:
+                arcade.play_sound(self.shoot_sound, volume=0.5)
 
     def create_enemy(self):
         self.enemy = Enemy("files/enemyShip1.png", 0.5, random.randint(3, 5))
-        self.enemy.center_x = random.randint(100, SCREEN_WIDTH-100)
+        self.enemy.center_x = random.randint(100, SCREEN_WIDTH - 100)
         self.enemy.center_y = 650
         self.enemy_list.append(self.enemy)
 
