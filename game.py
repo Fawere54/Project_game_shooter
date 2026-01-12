@@ -63,7 +63,7 @@ def create_explosion(x, y):
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 SCREEN_TITLE = "Сигма-орбита"
-PLAYER_SPEED = 7  # Скорость движения игрока
+PLAYER_SPEED = 9  # Скорость движения игрока
 
 
 class Bullet(arcade.Sprite):
@@ -162,7 +162,7 @@ class MyGame(arcade.Window):
         self.bullets_list = arcade.SpriteList()
         self.enemy_list = arcade.SpriteList()
 
-        self.button_play = Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, 100, 75, "play", (98, 99, 155))
+        self.button_play = Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, 100, 75, "Играть", (98, 99, 155))
 
         # Создаем флаги
         self.left_pressed = False
@@ -176,6 +176,7 @@ class MyGame(arcade.Window):
 
         # Счет
         self.score = 0
+        self.miss = 0
 
         # Создаем 3 врага
         self.create_enemy()
@@ -221,22 +222,33 @@ class MyGame(arcade.Window):
                              anchor_x="center")
 
     def draw_score(self):
-        """Отрисовка счета в правом верхнем углу экрана"""
-        score_text = f"Score: {self.score}"
+        score_text = f"Счет: {self.score}"
+        miss_text = f"Пропущено: {self.miss}"
 
-        arcade.draw_rect_filled(
-            arcade.rect.XYWH(SCREEN_WIDTH - 100, SCREEN_HEIGHT - 30, 200, 60),
-            (54, 187, 245, 255)
-        )
+        # arcade.draw_rect_filled(
+        #     arcade.rect.XYWH(SCREEN_WIDTH - 100, SCREEN_HEIGHT - 30, 200, 60),
+        #     (54, 187, 245, 255)
+        # )
 
         arcade.draw_text(
             score_text,
-            SCREEN_WIDTH - 100,
+            25,
             SCREEN_HEIGHT - 30,
             arcade.color.WHITE,
             30,
             align="center",
-            anchor_x="center",
+            anchor_x="left",
+            anchor_y="center",
+            bold=True
+        )
+        arcade.draw_text(
+            miss_text,
+            25,
+            SCREEN_HEIGHT - 70,
+            arcade.color.WHITE,
+            30,
+            align="center",
+            anchor_x="left",
             anchor_y="center",
             bold=True
         )
@@ -268,6 +280,14 @@ class MyGame(arcade.Window):
                 if e.center_y < -100:
                     e.remove_from_sprite_lists()
                     self.create_enemy()
+                    self.miss += 1
+
+            if self.miss >= 10:
+                if self.background_player:
+                    self.background_player.pause()
+                if self.game_over_sound:
+                    arcade.play_sound(self.game_over_sound, volume=0.5)
+                self.game = False
 
             # Проверяем есть ли столкновение пулей и врагом
             for bullet in self.bullets_list:
@@ -336,12 +356,12 @@ class MyGame(arcade.Window):
             self.down_pressed = False
 
     def on_mouse_press(self, x, y, button, modifiers):
-        # Создаем лазер при ПКМ
+        # Создаем лазер при ЛКМ
         if self.menu:
             if self.button_play.is_clicked(x, y):
                 self.game = True
                 self.menu = False
-        elif self.game and button == arcade.MOUSE_BUTTON_RIGHT:
+        elif self.game and button == arcade.MOUSE_BUTTON_LEFT:
             self.bullet = Bullet("files/laser.png", 0.3, 10)
             self.bullet.center_x = self.player_sprite.center_x
             self.bullet.center_y = self.player_sprite.center_y + self.player_sprite.height / 2
@@ -350,7 +370,7 @@ class MyGame(arcade.Window):
                 arcade.play_sound(self.shoot_sound, volume=0.5)
 
     def create_enemy(self):
-        self.enemy = Enemy("files/enemyShip1.png", 0.5, random.randint(3, 5))
+        self.enemy = Enemy(f"files/enemyShip{random.randint(1, 3)}.png", 0.5, random.randint(3, 5))
         self.enemy.center_x = random.randint(100, SCREEN_WIDTH - 100)
         self.enemy.center_y = 650
         self.enemy_list.append(self.enemy)
