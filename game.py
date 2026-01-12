@@ -110,11 +110,42 @@ class Button:
                              align="center", anchor_x="center", anchor_y="center")
 
     def is_clicked(self, x, y):
-        """Проверяет, был ли клик по кнопке"""
         left = self.x - self.width / 2
         right = self.x + self.width / 2
         bottom = self.y - self.height / 2
         top = self.y + self.height / 2
+
+        return left <= x <= right and bottom <= y <= top
+
+
+class TextureButton:
+    def __init__(self, texture_path, x, y, width, height):
+        texture = arcade.load_texture(texture_path)
+
+        # Вычисляем scale
+        scale_x = width / texture.width
+        scale_y = height / texture.height
+        scale = min(scale_x, scale_y)
+
+        # Создаем спрайт
+        self.sprite = arcade.Sprite(texture_path, scale)
+        self.sprite.center_x = x
+        self.sprite.center_y = y
+        self.spriteL = arcade.SpriteList()
+        self.spriteL.append(self.sprite)
+
+        # Сохраняем размеры для проверки кликов
+        self.width = width
+        self.height = height
+
+    def draw(self):
+        self.spriteL.draw()
+
+    def is_clicked(self, x, y):
+        left = self.sprite.center_x - self.width / 2
+        right = self.sprite.center_x + self.width / 2
+        bottom = self.sprite.center_y - self.height / 2
+        top = self.sprite.center_y + self.height / 2
 
         return left <= x <= right and bottom <= y <= top
 
@@ -162,7 +193,11 @@ class MyGame(arcade.Window):
         self.bullets_list = arcade.SpriteList()
         self.enemy_list = arcade.SpriteList()
 
-        self.button_play = Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, 100, 75, "Играть", (98, 99, 155))
+        self.button_play = Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, 200, 75, "Играть", (98, 99, 155))
+        self.button_skin = Button(SCREEN_WIDTH // 8, SCREEN_HEIGHT // 2, 100, 75, "Скины", (98, 99, 155))
+        self.button_reset = Button(400, SCREEN_HEIGHT // 2, 100, 75, "Заново", (98, 99, 155))
+        self.button_menu = Button(200, SCREEN_HEIGHT // 2, 100, 75, "В меню", (98, 99, 155))
+        self.test_button = TextureButton("files/playerLife1.png", 100, 100, 100, 100)
 
         # Создаем флаги
         self.left_pressed = False
@@ -198,6 +233,8 @@ class MyGame(arcade.Window):
         if self.menu:
             self.menu_sprite.draw()
             self.button_play.draw()
+            self.button_skin.draw()
+            self.test_button.draw()
 
         elif self.game:
             self.bg_game.draw()
@@ -220,6 +257,8 @@ class MyGame(arcade.Window):
                              24,
                              align="center",
                              anchor_x="center")
+            self.button_reset.draw()
+            self.button_menu.draw()
 
     def draw_score(self):
         score_text = f"Счет: {self.score}"
@@ -361,6 +400,12 @@ class MyGame(arcade.Window):
             if self.button_play.is_clicked(x, y):
                 self.game = True
                 self.menu = False
+            elif self.test_button.is_clicked(x, y):
+                print("qwertyu")
+            elif self.button_reset.is_clicked(x, y):
+                self.game = True
+            elif self.button_menu.is_clicked(x, y):
+                self.menu = True
         elif self.game and button == arcade.MOUSE_BUTTON_LEFT:
             self.bullet = Bullet("files/laser.png", 0.3, 10)
             self.bullet.center_x = self.player_sprite.center_x
