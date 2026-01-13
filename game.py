@@ -3,10 +3,10 @@ import random
 from arcade.particles import FadeParticle, Emitter, EmitBurst
 
 SPARK_TEX = [
-    arcade.make_soft_circle_texture(8, arcade.color.PASTEL_YELLOW),
-    arcade.make_soft_circle_texture(8, arcade.color.PEACH),
-    arcade.make_soft_circle_texture(8, arcade.color.BABY_BLUE),
-    arcade.make_soft_circle_texture(8, arcade.color.ELECTRIC_CRIMSON),
+    arcade.make_soft_circle_texture(8, arcade.color.YELLOW),
+    arcade.make_soft_circle_texture(8, arcade.color.ORANGE),
+    arcade.make_soft_circle_texture(8, arcade.color.RED),
+    arcade.make_soft_circle_texture(8, arcade.color.RED_BROWN),
 ]
 
 SMOKE_TEX = arcade.make_soft_circle_texture(20, arcade.color.LIGHT_GRAY, 255, 80)
@@ -195,8 +195,8 @@ class MyGame(arcade.Window):
 
         self.button_play = Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, 200, 75, "Играть", (98, 99, 155))
         self.button_skin = Button(SCREEN_WIDTH // 8, SCREEN_HEIGHT // 2, 100, 75, "Скины", (98, 99, 155))
-        self.button_reset = Button(400, SCREEN_HEIGHT // 2, 100, 75, "Заново", (98, 99, 155))
-        self.button_menu = Button(200, SCREEN_HEIGHT // 2, 100, 75, "В меню", (98, 99, 155))
+        self.button_reset = Button(400, SCREEN_HEIGHT // 3, 100, 75, "Заново", (98, 99, 155))
+        self.button_menu = Button(200, SCREEN_HEIGHT // 3, 100, 75, "В меню", (98, 99, 155))
         self.test_button = TextureButton("files/playerLife1.png", 100, 100, 100, 100)
 
         # Создаем флаги
@@ -249,10 +249,10 @@ class MyGame(arcade.Window):
 
         else:
             # Экран Game Over с отображением финального счета
-            arcade.draw_text("Game Over!", 310, 350, arcade.color.RED, 30)
-            arcade.draw_text(f"Final Score: {self.score}",
+            arcade.draw_text("В следующий раз повезет!", 200, 350, arcade.color.RED, 30)
+            arcade.draw_text(f"Результат: {self.score}",
                              SCREEN_WIDTH // 2,
-                             SCREEN_HEIGHT // 2 - 50,
+                             SCREEN_HEIGHT // 2,
                              arcade.color.WHITE,
                              24,
                              align="center",
@@ -372,6 +372,23 @@ class MyGame(arcade.Window):
         else:
             pass
 
+    def reset_game(self):
+        # Перезапуск игры с созданием модельки игрока
+        self.score = 0
+        self.miss = 0
+        self.bullets_list.clear()
+        self.enemy_list.clear()
+        self.emitters.clear()
+        self.player_sprites.clear()
+        self.player_sprite = arcade.Sprite("files/Player.png", scale=0.5)
+        self.player_sprite.center_x = SCREEN_WIDTH // 2
+        self.player_sprite.center_y = 45
+        self.player_sprites.append(self.player_sprite)
+        for i in range(3):
+            self.create_enemy()
+        if self.background_music and self.background_player:
+            self.background_player.play()
+
     def on_key_press(self, key, modifiers):
         # Обработка нажатий клавиш для управления игроком
         if key in (arcade.key.LEFT, arcade.key.A):
@@ -402,11 +419,6 @@ class MyGame(arcade.Window):
                 self.menu = False
             elif self.test_button.is_clicked(x, y):
                 print("qwertyu")
-            elif self.button_reset.is_clicked(x, y):
-                self.game = True
-                self.menu = False
-            elif self.button_menu.is_clicked(x, y):
-                self.menu = True
 
         elif self.game and button == arcade.MOUSE_BUTTON_LEFT:
             self.bullet = Bullet("files/laser.png", 0.3, 10)
@@ -417,15 +429,13 @@ class MyGame(arcade.Window):
                 arcade.play_sound(self.shoot_sound, volume=0.5)
         else:
             if self.button_reset.is_clicked(x, y):
-                self.miss = 0
+                self.reset_game()
                 self.game = True
                 self.menu = False
             elif self.button_menu.is_clicked(x, y):
-                self.miss = 0
+                self.reset_game()
                 self.menu = True
                 self.game = False
-            else:
-                pass
 
     def create_enemy(self):
         self.enemy = Enemy(f"files/enemyShip{random.randint(1, 3)}.png", 0.5, random.randint(3, 5))
