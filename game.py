@@ -174,6 +174,40 @@ class TextureButton:
         return left <= x <= right and bottom <= y <= top
 
 
+class Player(arcade.Sprite):
+    def __init__(self):
+        super().__init__("files/Player.png", scale=0.5)
+        self.idle_texture = arcade.load_texture("files/Player.png")
+        self.shoot_textures = [
+            arcade.load_texture("files/Player_move1.png"),
+            arcade.load_texture("files/Player_move2.png")
+        ]
+        self.is_shooting = False
+        self.shoot_timer = 0
+        self.current_texture_idx = 0
+        self.anim_speed = 0.1
+        self.anim_timer = 0
+
+    def start_shooting_animation(self):
+        self.is_shooting = True
+        self.shoot_timer = 0.3
+        self.current_texture_idx = 0
+
+    def update_animation(self, delta_time: float = 1 / 60):
+        if self.is_shooting:
+            self.shoot_timer -= delta_time
+            self.anim_timer += delta_time
+            if self.anim_timer >= self.anim_speed:
+                self.anim_timer = 0
+                self.current_texture_idx = (self.current_texture_idx + 1) % len(self.shoot_textures)
+                self.texture = self.shoot_textures[self.current_texture_idx]
+            if self.shoot_timer <= 0:
+                self.is_shooting = False
+                self.texture = self.idle_texture
+        else:
+            self.texture = self.idle_texture
+
+
 class MyGame(arcade.View):
     def __init__(self):
         super().__init__()
@@ -205,7 +239,7 @@ class MyGame(arcade.View):
         self.bg_game.append(self.bg_game2)
 
         # Создаем спрайт игрока
-        self.player_sprite = arcade.Sprite("files/Player.png", scale=0.5)
+        self.player_sprite = Player()
         self.player_sprite.center_x = SCREEN_WIDTH // 2
         self.player_sprite.center_y = 45
 
@@ -320,6 +354,8 @@ class MyGame(arcade.View):
         if self.menu:
             pass
         elif self.game:
+            # Анимация игрока
+            self.player_sprite.update_animation(delta_time)
             # Обновляем позицию игрока в зависимости от нажатых клавиш
             if self.left_pressed and not self.right_pressed:
                 self.player_sprite.center_x -= PLAYER_SPEED
@@ -404,7 +440,7 @@ class MyGame(arcade.View):
         self.enemy_list.clear()
         self.emitters.clear()
         self.player_sprites.clear()
-        self.player_sprite = arcade.Sprite("files/Player.png", scale=0.5)
+        self.player_sprite = Player()
         self.player_sprite.center_x = SCREEN_WIDTH // 2
         self.player_sprite.center_y = 45
         self.player_sprites.append(self.player_sprite)
@@ -449,6 +485,7 @@ class MyGame(arcade.View):
                 print("qwertyu")
 
         elif self.game and button == arcade.MOUSE_BUTTON_LEFT:
+            self.player_sprite.start_shooting_animation()
             self.bullet = Bullet("files/laser.png", 0.3, 10)
             self.bullet.center_x = self.player_sprite.center_x
             self.bullet.center_y = self.player_sprite.center_y + self.player_sprite.height / 2
