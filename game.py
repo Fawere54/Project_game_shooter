@@ -402,10 +402,6 @@ class MyGame(arcade.Window):
                 self.menu = False
             elif self.test_button.is_clicked(x, y):
                 print("qwertyu")
-            elif self.button_reset.is_clicked(x, y):
-                self.game = True
-            elif self.button_menu.is_clicked(x, y):
-                self.menu = True
         elif self.game and button == arcade.MOUSE_BUTTON_LEFT:
             self.bullet = Bullet("files/laser.png", 0.3, 10)
             self.bullet.center_x = self.player_sprite.center_x
@@ -413,6 +409,11 @@ class MyGame(arcade.Window):
             self.bullets_list.append(self.bullet)
             if self.shoot_sound:
                 arcade.play_sound(self.shoot_sound, volume=0.5)
+        else:
+							if self.button_reset.is_clicked(x, y):
+                self.game = True
+            elif self.button_menu.is_clicked(x, y):
+                self.menu = True
 
     def create_enemy(self):
         self.enemy = Enemy(f"files/enemyShip{random.randint(1, 3)}.png", 0.5, random.randint(3, 5))
