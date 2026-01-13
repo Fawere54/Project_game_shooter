@@ -1,6 +1,7 @@
 import arcade
 import random
 from arcade.particles import FadeParticle, Emitter, EmitBurst
+from pyglet.graphics import Batch
 
 SPARK_TEX = [
     arcade.make_soft_circle_texture(8, arcade.color.YELLOW),
@@ -10,6 +11,7 @@ SPARK_TEX = [
 ]
 
 SMOKE_TEX = arcade.make_soft_circle_texture(20, arcade.color.LIGHT_GRAY, 255, 80)
+
 
 def gravity_drag(p):
     p.change_y += -0.03
@@ -21,6 +23,7 @@ def smoke_mutator(p):
     p.scale_x *= 1.02
     p.scale_y *= 1.02
     p.alpha = max(0, p.alpha - 2)
+
 
 def create_explosion(x, y):
     emitters = []
@@ -58,6 +61,7 @@ def create_explosion(x, y):
     )
 
     return emitters
+
 
 # Параметры экрана
 SCREEN_WIDTH = 800
@@ -118,6 +122,26 @@ class Button:
         return left <= x <= right and bottom <= y <= top
 
 
+class PauseView(arcade.View):
+    def __init__(self, game_view):
+        super().__init__()
+        self.game_view = game_view
+        self.batch = Batch()
+        self.pause_text = arcade.Text("Пауза", self.window.width / 2, self.window.height / 2,
+                                      arcade.color.WHITE, font_size=40, anchor_x="center", batch=self.batch)
+        self.space_text = arcade.Text("Нажми SPACE, чтобы продолжить", self.window.width / 2,
+                                      self.window.height / 2 - 50,
+                                      arcade.color.WHITE, font_size=20, anchor_x="center", batch=self.batch)
+
+    def on_draw(self):
+        self.clear()
+        self.batch.draw()
+
+    def on_key_press(self, key, modifiers):
+        if key == arcade.key.SPACE or key == arcade.key.ESCAPE:
+            self.window.show_view(self.game_view)
+
+
 class TextureButton:
     def __init__(self, texture_path, x, y, width, height):
         texture = arcade.load_texture(texture_path)
@@ -150,9 +174,9 @@ class TextureButton:
         return left <= x <= right and bottom <= y <= top
 
 
-class MyGame(arcade.Window):
+class MyGame(arcade.View):
     def __init__(self):
-        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+        super().__init__()
         # Создаем фон
         self.bg_game1 = arcade.Sprite("files/bg_space.png", scale=1.0)
         self.bg_game1.center_x = SCREEN_WIDTH // 2
@@ -390,6 +414,10 @@ class MyGame(arcade.Window):
             self.background_player.play()
 
     def on_key_press(self, key, modifiers):
+        # Пауза
+        if key == arcade.key.SPACE and self.game:
+            pause_view = PauseView(self)
+            self.window.show_view(pause_view)
         # Обработка нажатий клавиш для управления игроком
         if key in (arcade.key.LEFT, arcade.key.A):
             self.left_pressed = True
@@ -445,8 +473,10 @@ class MyGame(arcade.Window):
 
 
 def main():
-    game = MyGame()
-    game.setup()
+    window = arcade.Window(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+    game_view = MyGame()
+    window.show_view(game_view)
+    game_view.setup()
     arcade.run()
 
 
