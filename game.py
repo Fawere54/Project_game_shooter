@@ -174,10 +174,47 @@ class TextureButton:
         return left <= x <= right and bottom <= y <= top
 
 
+class Item:
+    def __init__(self, texture_path, x, y, width, height, text):
+        texture = arcade.load_texture(texture_path)
+
+        # Вычисляем scale
+        scale_x = width / texture.width
+        scale_y = height / texture.height
+        scale = min(scale_x, scale_y)
+
+        # Создаем спрайт
+        self.sprite = arcade.Sprite(texture_path, scale)
+        self.sprite.center_x = x
+        self.sprite.center_y = y
+        self.spriteL = arcade.SpriteList()
+        self.spriteL.append(self.sprite)
+
+        self.width = width
+        self.height = height
+        self.text = text
+        self.x = x
+        self.y = y
+
+    def draw(self):
+        self.spriteL.draw()
+        arcade.draw_text(self.text, self.x, self.y - self.height // 2,
+                             arcade.color.WHITE, 20,
+                             align="center", anchor_x="center", anchor_y="top")
+
+    def is_clicked(self, x, y):
+        left = self.sprite.center_x - self.width / 2
+        right = self.sprite.center_x + self.width / 2
+        bottom = self.sprite.center_y - self.height / 2
+        top = self.sprite.center_y + self.height / 2
+
+        return left <= x <= right and bottom <= y <= top
+
+
 class Player(arcade.Sprite):
     def __init__(self):
-        super().__init__("files/Player.png", scale=0.5)
-        self.idle_texture = arcade.load_texture("files/Player.png")
+        super().__init__("files/Player_blue.png", scale=0.5)
+        self.idle_texture = arcade.load_texture("files/Player_blue.png")
         self.shoot_textures = [
             arcade.load_texture("files/Player_move1.png"),
             arcade.load_texture("files/Player_move2.png")
@@ -211,6 +248,23 @@ class Player(arcade.Sprite):
 class MyGame(arcade.View):
     def __init__(self):
         super().__init__()
+        # Создаем флаги
+        self.left_pressed = False
+        self.right_pressed = False
+        self.up_pressed = False
+        self.down_pressed = False
+        self.game = False
+        self.menu = True
+        self.shop = False
+
+        self.emitters = []
+
+        self.skin = "files/skin_blue.png"
+
+        # Счет
+        self.score = 0
+        self.miss = 0
+
         # Создаем фон
         self.bg_game1 = arcade.Sprite("files/bg_space.png", scale=1.0)
         self.bg_game1.center_x = SCREEN_WIDTH // 2
@@ -224,6 +278,10 @@ class MyGame(arcade.View):
         self.bg_game2.width = SCREEN_WIDTH
         self.bg_game2.height = 1400
 
+        self.bg_game = arcade.SpriteList()
+        self.bg_game.append(self.bg_game1)
+        self.bg_game.append(self.bg_game2)
+
         self.bg_menu = arcade.Sprite("files/galaxy.jpg", scale=1.0)
         self.bg_menu.center_x = SCREEN_WIDTH // 2
         self.bg_menu.center_y = SCREEN_HEIGHT // 2
@@ -232,11 +290,6 @@ class MyGame(arcade.View):
 
         self.menu_sprite = arcade.SpriteList()
         self.menu_sprite.append(self.bg_menu)
-
-        # Создаем список для всех спрайтов
-        self.bg_game = arcade.SpriteList()
-        self.bg_game.append(self.bg_game1)
-        self.bg_game.append(self.bg_game2)
 
         # Создаем спрайт игрока
         self.player_sprite = Player()
@@ -247,29 +300,26 @@ class MyGame(arcade.View):
         self.player_sprites = arcade.SpriteList()
         self.player_sprites.append(self.player_sprite)
 
+        self.coin = arcade.Sprite("files/coin.png",scale=1.0)
+        self.coin.center_x = 50
+        self.coin.center_y = 550
+        self.coin.width = 50
+        self.coin.height = 50
+
+        self.shop_sprites = arcade.SpriteList()
+        self.shop_sprites.append(self.coin)
+
         # Создаем списки лазеров и врагов
         self.bullets_list = arcade.SpriteList()
         self.enemy_list = arcade.SpriteList()
 
+        self.skin_base = Item("files/Player_blue.png", 150, 450, 100, 100, "Установлено")
+        self.skin_green = Item("files/Player_green.png", 300, 450, 100, 100, "100")
         self.button_play = Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, 200, 75, "Играть", (98, 99, 155))
         self.button_skin = Button(SCREEN_WIDTH // 8, SCREEN_HEIGHT // 2, 100, 75, "Скины", (98, 99, 155))
         self.button_reset = Button(400, SCREEN_HEIGHT // 3, 100, 75, "Заново", (98, 99, 155))
         self.button_menu = Button(200, SCREEN_HEIGHT // 3, 100, 75, "В меню", (98, 99, 155))
-        self.test_button = TextureButton("files/playerLife1.png", 100, 100, 100, 100)
-
-        # Создаем флаги
-        self.left_pressed = False
-        self.right_pressed = False
-        self.up_pressed = False
-        self.down_pressed = False
-        self.game = False
-        self.menu = True
-
-        self.emitters = []
-
-        # Счет
-        self.score = 0
-        self.miss = 0
+        self.button_exit_menu = Button(60, 35, 100, 50, "Назад", (98, 99, 155))
 
         # Создаем 3 врага
         self.create_enemy()
@@ -292,7 +342,20 @@ class MyGame(arcade.View):
             self.menu_sprite.draw()
             self.button_play.draw()
             self.button_skin.draw()
-            self.test_button.draw()
+
+        elif self.shop:
+            self.menu_sprite.draw()
+            self.shop_sprites.draw()
+            self.skin_base.draw()
+            self.skin_green.draw()
+            self.button_exit_menu.draw()
+            arcade.draw_text(self.score,
+                              80,
+                              537,
+                              arcade.color.WHITE,
+                              30,
+                              align="center",
+                              anchor_x="left")
 
         elif self.game:
             self.bg_game.draw()
@@ -403,7 +466,7 @@ class MyGame(arcade.View):
                             arcade.play_sound(self.explosion_sound, volume=0.3)
 
                         enemy.remove_from_sprite_lists()
-                        self.score += 10
+                        self.score += 1
                         self.create_enemy()
 
             for enemy in self.enemy_list:
@@ -481,9 +544,13 @@ class MyGame(arcade.View):
             if self.button_play.is_clicked(x, y):
                 self.game = True
                 self.menu = False
-            elif self.test_button.is_clicked(x, y):
-                print("qwertyu")
-
+            elif self.button_skin.is_clicked(x, y):
+                self.menu = False
+                self.shop = True
+        elif self.shop:
+            if self.button_exit_menu.is_clicked(x, y):
+                self.shop = False
+                self.menu = True
         elif self.game and button == arcade.MOUSE_BUTTON_LEFT:
             self.player_sprite.start_shooting_animation()
             self.bullet = Bullet("files/laser.png", 0.3, 10)
