@@ -67,7 +67,6 @@ def create_explosion(x, y):
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 SCREEN_TITLE = "Сигма-орбита"
-PLAYER_SPEED = 9  # Скорость движения игрока
 
 
 class Bullet(arcade.Sprite):
@@ -212,18 +211,20 @@ class Item:
 
 
 class Player(arcade.Sprite):
-    def __init__(self):
-        super().__init__("files/PlayerBlue.png", scale=0.5)
-        self.idle_texture = arcade.load_texture("files/PlayerBlue.png")
+    def __init__(self, color, x, y, scale):
+        super().__init__(scale=scale)
+        self.idle_texture = arcade.load_texture(f"files/Player{color}.png")
         self.shoot_textures = [
-            arcade.load_texture("files/PlayerBlue_move1.png"),
-            arcade.load_texture("files/PlayerBlue_move2.png")
+            arcade.load_texture(f"files/Player{color}_move1.png"),
+            arcade.load_texture(f"files/Player{color}_move2.png")
         ]
         self.is_shooting = False
         self.shoot_timer = 0
         self.current_texture_idx = 0
         self.anim_speed = 0.1
         self.anim_timer = 0
+        self.center_x = x
+        self.center_y = y
 
     def start_shooting_animation(self):
         self.is_shooting = True
@@ -258,14 +259,25 @@ class MyGame(arcade.View):
         self.shop = False
         self.update = False
 
+        self.skinBlue = True
+        self.skinGreen = False
+        self.skinRed = False
+        self.skinOrange = False
+        self.skinPurple = False
+
         self.emitters = []
 
-        self.skin = "files/skin_blue.png"
+        self.skin = "Blue"
 
         # Счет
-        self.money = 0
+        self.money = 1000
         self.score = 0
         self.miss = 0
+
+        self.speedLVL = 1
+        self.speedPrice = 10
+        self.speedList = {1: 10, 2: 25, 3: 50, 4: 100, 5: "MAX"}
+        self.player_speed = 5
 
         # Создаем фон
         self.bg_game1 = arcade.Sprite("files/bg_space.png", scale=1.0)
@@ -294,9 +306,7 @@ class MyGame(arcade.View):
         self.menu_sprite.append(self.bg_menu)
 
         # Создаем спрайт игрока
-        self.player_sprite = Player()
-        self.player_sprite.center_x = SCREEN_WIDTH // 2
-        self.player_sprite.center_y = 45
+        self.player_sprite = Player(self.skin, SCREEN_WIDTH // 2, 45, 0.5)
 
         # Создаем список спрайтов
         self.player_sprites = arcade.SpriteList()
@@ -315,14 +325,22 @@ class MyGame(arcade.View):
         self.bullets_list = arcade.SpriteList()
         self.enemy_list = arcade.SpriteList()
 
-        self.skin_base = Item("files/PlayerBlue.png", 150, 450, 100, 100, "Установлено")
-        self.skin_green = Item("files/PlayerGreen.png", 300, 450, 100, 100, "100")
+        self.skin_blue = Item("files/PlayerBlue.png", 100, 450, 100, 100, "Установлено")
+        self.skin_green = Item("files/PlayerGreen.png", 250, 450, 100, 100, "100")
+        self.skin_red = Item("files/PlayerRed.png", 400, 450, 100, 100, "100")
+        self.skin_orange = Item("files/PlayerOrange.png", 550, 450, 100, 100, "100")
+        self.skin_purple = Item("files/PlayerPurple.png", 700, 450, 100, 100, "100")
+
+        self.skins = [self.skin_blue, self.skin_green, self.skin_red, self.skin_orange, self.skin_purple]
+
         self.button_play = Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, 200, 75, "Играть", (98, 99, 155))
         self.button_skin = Button(SCREEN_WIDTH // 8, SCREEN_HEIGHT // 2, 150, 75, "Скины", (98, 99, 155))
         self.button_update = Button(SCREEN_WIDTH - SCREEN_WIDTH // 8, SCREEN_HEIGHT // 2, 150, 75, "Улучшения", (98, 99, 155))
         self.button_reset = Button(400, SCREEN_HEIGHT // 3, 100, 75, "Заново", (98, 99, 155))
         self.button_menu = Button(200, SCREEN_HEIGHT // 3, 100, 75, "В меню", (98, 99, 155))
         self.button_exit_menu = Button(60, 35, 100, 50, "Назад", (98, 99, 155))
+
+        self.button_update_speed = Button(160, 320, 120, 50, "Улучшить", (98, 99, 155))
 
         # Создаем 3 врага
         self.create_enemy()
@@ -350,8 +368,11 @@ class MyGame(arcade.View):
         elif self.shop:
             self.menu_sprite.draw()
             self.shop_sprites.draw()
-            self.skin_base.draw()
+            self.skin_blue.draw()
             self.skin_green.draw()
+            self.skin_red.draw()
+            self.skin_orange.draw()
+            self.skin_purple.draw()
             self.button_exit_menu.draw()
             arcade.draw_text(self.money,
                               80,
@@ -372,6 +393,11 @@ class MyGame(arcade.View):
                              30,
                              align="center",
                              anchor_x="left")
+            arcade.draw_text("Скорость", 100, 450, arcade.color.WHITE, 24)
+            arcade.draw_text(f"{self.speedLVL} LVL", 127, 420, arcade.color.WHITE, 24)
+            arcade.draw_text(f"{self.speedPrice} Монет", 160, 380, arcade.color.WHITE, 20, anchor_x="center")
+            if self.speedPrice != "MAX":
+                self.button_update_speed.draw()
 
         elif self.game:
             self.bg_game.draw()
@@ -400,11 +426,6 @@ class MyGame(arcade.View):
     def draw_score(self):
         score_text = f"Счет: {self.score}"
         miss_text = f"Пропущено: {self.miss}"
-
-        # arcade.draw_rect_filled(
-        #     arcade.rect.XYWH(SCREEN_WIDTH - 100, SCREEN_HEIGHT - 30, 200, 60),
-        #     (54, 187, 245, 255)
-        # )
 
         arcade.draw_text(
             score_text,
@@ -437,9 +458,9 @@ class MyGame(arcade.View):
             self.player_sprite.update_animation(delta_time)
             # Обновляем позицию игрока в зависимости от нажатых клавиш
             if self.left_pressed and not self.right_pressed:
-                self.player_sprite.center_x -= PLAYER_SPEED
+                self.player_sprite.center_x -= self.player_speed
             elif self.right_pressed and not self.left_pressed:
-                self.player_sprite.center_x += PLAYER_SPEED
+                self.player_sprite.center_x += self.player_speed
 
             # Ограничиваем движение игрока границами экрана
             if self.player_sprite.left < 0:
@@ -508,6 +529,32 @@ class MyGame(arcade.View):
                 e.update(delta_time)
                 if e.can_reap():
                     self.emitters.remove(e)
+        elif self.shop:
+            if self.skinBlue:
+                for s in self.skins:
+                    if s.text == "Установлено":
+                        s.text = ""
+                self.skin_blue.text = "Установлено"
+            elif self.skinGreen:
+                for s in self.skins:
+                    if s.text == "Установлено":
+                        s.text = ""
+                self.skin_green.text = "Установлено"
+            elif self.skinRed:
+                for s in self.skins:
+                    if s.text == "Установлено":
+                        s.text = ""
+                self.skin_red.text = "Установлено"
+            elif self.skinOrange:
+                for s in self.skins:
+                    if s.text == "Установлено":
+                        s.text = ""
+                self.skin_orange.text = "Установлено"
+            elif self.skinPurple:
+                for s in self.skins:
+                    if s.text == "Установлено":
+                        s.text = ""
+                self.skin_purple.text = "Установлено"
         else:
             pass
 
@@ -520,9 +567,7 @@ class MyGame(arcade.View):
         self.enemy_list.clear()
         self.emitters.clear()
         self.player_sprites.clear()
-        self.player_sprite = Player()
-        self.player_sprite.center_x = SCREEN_WIDTH // 2
-        self.player_sprite.center_y = 45
+        self.player_sprite = Player(self.skin, SCREEN_WIDTH // 2, 45, 0.5)
         self.player_sprites.append(self.player_sprite)
         for i in range(3):
             self.create_enemy()
@@ -561,17 +606,77 @@ class MyGame(arcade.View):
             if self.button_play.is_clicked(x, y):
                 self.game = True
                 self.menu = False
+                self.reset_game()
             elif self.button_skin.is_clicked(x, y):
                 self.menu = False
                 self.shop = True
             elif self.button_update.is_clicked(x, y):
                 self.menu = False
                 self.update = True
-        elif self.shop or self.update:
+        elif self.shop:
             if self.button_exit_menu.is_clicked(x, y):
                 self.shop = False
+                self.menu = True
+            elif self.skin_blue.is_clicked(x, y):
+                self.skin = "Blue"
+                self.skinBlue = True
+                self.skinGreen = False
+                self.skinRed = False
+                self.skinOrange = False
+                self.skinPurple = False
+            elif self.skin_green.is_clicked(x, y):
+                if self.money >= 100 or self.skinGreen:
+                    if self.skin_green.text == "100":
+                        self.money -= 100
+                    self.skin = "Green"
+                    self.skinBlue = False
+                    self.skinGreen = True
+                    self.skinRed = False
+                    self.skinOrange = False
+                    self.skinPurple = False
+            elif self.skin_red.is_clicked(x, y):
+                if self.money >= 100 or self.skinRed:
+                    if self.skin_red.text == "100":
+                        self.money -= 100
+                    self.skin = "Red"
+                    self.skinBlue = False
+                    self.skinGreen = False
+                    self.skinRed = True
+                    self.skinOrange = False
+                    self.skinPurple = False
+            elif self.skin_orange.is_clicked(x, y):
+                if self.money >= 100 or self.skinOrange:
+                    if self.skin_orange.text == "100":
+                        self.money -= 100
+                    self.skin = "Orange"
+                    self.skinBlue = False
+                    self.skinGreen = False
+                    self.skinRed = False
+                    self.skinOrange = True
+                    self.skinPurple = False
+            elif self.skin_purple.is_clicked(x, y):
+                if self.money >= 100 or self.skinPurple:
+                    if self.skin_purple.text == "100":
+                        self.money -= 100
+                    self.skin = "Purple"
+                    self.skinBlue = False
+                    self.skinGreen = False
+                    self.skinRed = False
+                    self.skinOrange = False
+                    self.skinPurple = True
+        elif self.update:
+            if self.button_exit_menu.is_clicked(x, y):
                 self.update = False
                 self.menu = True
+            elif self.button_update_speed.is_clicked(x, y):
+                try:
+                    if self.money >= self.speedPrice:
+                        self.speedLVL += 1
+                        self.money -= self.speedPrice
+                        self.speedPrice = self.speedList[self.speedLVL]
+                        self.player_speed += 1
+                except TypeError:
+                    pass
         elif self.game and button == arcade.MOUSE_BUTTON_LEFT:
             self.player_sprite.start_shooting_animation()
             self.bullet = Bullet("files/laser.png", 0.3, 10)
