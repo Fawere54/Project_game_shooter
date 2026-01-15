@@ -213,11 +213,11 @@ class Item:
 
 class Player(arcade.Sprite):
     def __init__(self):
-        super().__init__("files/Player_blue.png", scale=0.5)
-        self.idle_texture = arcade.load_texture("files/Player_blue.png")
+        super().__init__("files/PlayerBlue.png", scale=0.5)
+        self.idle_texture = arcade.load_texture("files/PlayerBlue.png")
         self.shoot_textures = [
-            arcade.load_texture("files/Player_move1.png"),
-            arcade.load_texture("files/Player_move2.png")
+            arcade.load_texture("files/PlayerBlue_move1.png"),
+            arcade.load_texture("files/PlayerBlue_move2.png")
         ]
         self.is_shooting = False
         self.shoot_timer = 0
@@ -315,8 +315,8 @@ class MyGame(arcade.View):
         self.bullets_list = arcade.SpriteList()
         self.enemy_list = arcade.SpriteList()
 
-        self.skin_base = Item("files/Player_blue.png", 150, 450, 100, 100, "Установлено")
-        self.skin_green = Item("files/Player_green.png", 300, 450, 100, 100, "100")
+        self.skin_base = Item("files/PlayerBlue.png", 150, 450, 100, 100, "Установлено")
+        self.skin_green = Item("files/PlayerGreen.png", 300, 450, 100, 100, "100")
         self.button_play = Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, 200, 75, "Играть", (98, 99, 155))
         self.button_skin = Button(SCREEN_WIDTH // 8, SCREEN_HEIGHT // 2, 150, 75, "Скины", (98, 99, 155))
         self.button_update = Button(SCREEN_WIDTH - SCREEN_WIDTH // 8, SCREEN_HEIGHT // 2, 150, 75, "Улучшения", (98, 99, 155))
