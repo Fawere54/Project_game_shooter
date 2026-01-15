@@ -256,12 +256,14 @@ class MyGame(arcade.View):
         self.game = False
         self.menu = True
         self.shop = False
+        self.update = False
 
         self.emitters = []
 
         self.skin = "files/skin_blue.png"
 
         # Счет
+        self.money = 0
         self.score = 0
         self.miss = 0
 
@@ -316,7 +318,8 @@ class MyGame(arcade.View):
         self.skin_base = Item("files/Player_blue.png", 150, 450, 100, 100, "Установлено")
         self.skin_green = Item("files/Player_green.png", 300, 450, 100, 100, "100")
         self.button_play = Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, 200, 75, "Играть", (98, 99, 155))
-        self.button_skin = Button(SCREEN_WIDTH // 8, SCREEN_HEIGHT // 2, 100, 75, "Скины", (98, 99, 155))
+        self.button_skin = Button(SCREEN_WIDTH // 8, SCREEN_HEIGHT // 2, 150, 75, "Скины", (98, 99, 155))
+        self.button_update = Button(SCREEN_WIDTH - SCREEN_WIDTH // 8, SCREEN_HEIGHT // 2, 150, 75, "Улучшения", (98, 99, 155))
         self.button_reset = Button(400, SCREEN_HEIGHT // 3, 100, 75, "Заново", (98, 99, 155))
         self.button_menu = Button(200, SCREEN_HEIGHT // 3, 100, 75, "В меню", (98, 99, 155))
         self.button_exit_menu = Button(60, 35, 100, 50, "Назад", (98, 99, 155))
@@ -342,6 +345,7 @@ class MyGame(arcade.View):
             self.menu_sprite.draw()
             self.button_play.draw()
             self.button_skin.draw()
+            self.button_update.draw()
 
         elif self.shop:
             self.menu_sprite.draw()
@@ -349,13 +353,25 @@ class MyGame(arcade.View):
             self.skin_base.draw()
             self.skin_green.draw()
             self.button_exit_menu.draw()
-            arcade.draw_text(self.score,
+            arcade.draw_text(self.money,
                               80,
                               537,
                               arcade.color.WHITE,
                               30,
                               align="center",
                               anchor_x="left")
+
+        elif self.update:
+            self.menu_sprite.draw()
+            self.button_exit_menu.draw()
+            self.shop_sprites.draw()
+            arcade.draw_text(self.money,
+                             80,
+                             537,
+                             arcade.color.WHITE,
+                             30,
+                             align="center",
+                             anchor_x="left")
 
         elif self.game:
             self.bg_game.draw()
@@ -497,6 +513,7 @@ class MyGame(arcade.View):
 
     def reset_game(self):
         # Перезапуск игры с созданием модельки игрока
+        self.money += self.score
         self.score = 0
         self.miss = 0
         self.bullets_list.clear()
@@ -547,9 +564,13 @@ class MyGame(arcade.View):
             elif self.button_skin.is_clicked(x, y):
                 self.menu = False
                 self.shop = True
-        elif self.shop:
+            elif self.button_update.is_clicked(x, y):
+                self.menu = False
+                self.update = True
+        elif self.shop or self.update:
             if self.button_exit_menu.is_clicked(x, y):
                 self.shop = False
+                self.update = False
                 self.menu = True
         elif self.game and button == arcade.MOUSE_BUTTON_LEFT:
             self.player_sprite.start_shooting_animation()
