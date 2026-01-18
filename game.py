@@ -258,21 +258,29 @@ class MyGame(arcade.View):
         self.menu = True
         self.shop = False
         self.update = False
+        self.win = False
 
         self.skinBlue = True
         self.skinGreen = False
         self.skinRed = False
         self.skinOrange = False
         self.skinPurple = False
+        self.skinYellow = False
+        self.skinGrey = False
 
         self.emitters = []
 
         self.skin = "Blue"
+        self.difficult = "Easy"
 
         # Счет
-        self.money = 1000
+        self.money = 0
+        self.mon = 0
         self.score = 0
+        self.kill = 0
         self.miss = 0
+        self.miss_over = 10
+        self.shot = 0
 
         self.speedLVL = 1
         self.speedPrice = 10
@@ -330,8 +338,10 @@ class MyGame(arcade.View):
         self.skin_red = Item("files/PlayerRed.png", 400, 450, 100, 100, "100")
         self.skin_orange = Item("files/PlayerOrange.png", 550, 450, 100, 100, "100")
         self.skin_purple = Item("files/PlayerPurple.png", 700, 450, 100, 100, "100")
+        self.skin_yellow = Item("files/PlayerYellow.png", 100, 250, 100, 100, "100")
+        self.skin_grey = Item("files/PlayerGrey.png", 250, 250, 100, 100, "100")
 
-        self.skins = [self.skin_blue, self.skin_green, self.skin_red, self.skin_orange, self.skin_purple]
+        self.skins = [self.skin_blue, self.skin_green, self.skin_red, self.skin_orange, self.skin_purple, self.skin_yellow, self.skin_grey]
 
         self.button_play = Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, 200, 75, "Играть", (98, 99, 155))
         self.button_skin = Button(SCREEN_WIDTH // 8, SCREEN_HEIGHT // 2, 150, 75, "Скины", (98, 99, 155))
@@ -368,11 +378,8 @@ class MyGame(arcade.View):
         elif self.shop:
             self.menu_sprite.draw()
             self.shop_sprites.draw()
-            self.skin_blue.draw()
-            self.skin_green.draw()
-            self.skin_red.draw()
-            self.skin_orange.draw()
-            self.skin_purple.draw()
+            for s in self.skins:
+                s.draw()
             self.button_exit_menu.draw()
             arcade.draw_text(self.money,
                               80,
@@ -411,21 +418,53 @@ class MyGame(arcade.View):
             self.draw_score()
 
         else:
-            # Экран Game Over с отображением финального счета
-            arcade.draw_text("В следующий раз повезет!", 200, 350, arcade.color.RED, 30)
-            arcade.draw_text(f"Результат: {self.score}",
-                             SCREEN_WIDTH // 2,
-                             SCREEN_HEIGHT // 2,
-                             arcade.color.WHITE,
-                             24,
-                             align="center",
-                             anchor_x="center")
-            self.button_reset.draw()
-            self.button_menu.draw()
+            if self.win:
+                pass
+            else:
+                # Экран Game Over с отображением финального счета
+                arcade.draw_text("В следующий раз повезет!", 200, 550, arcade.color.RED, 30)
+                arcade.draw_text(f"Результаты:",
+                                 400,
+                                 500,
+                                 arcade.color.WHITE,
+                                 24,
+                                 align="center",
+                                 anchor_x="center")
+                arcade.draw_text(f"Уровень сложности: {self.difficult}",
+                                 400,
+                                 450,
+                                 arcade.color.WHITE,
+                                 24,
+                                 align="center",
+                                 anchor_x="center")
+                arcade.draw_text(f"Кол-во выстрелов: {self.shot}",
+                                 400,
+                                 400,
+                                 arcade.color.WHITE,
+                                 24,
+                                 align="center",
+                                 anchor_x="center")
+                arcade.draw_text(f"Убито врагов: {self.kill}",
+                                 400,
+                                 350,
+                                 arcade.color.WHITE,
+                                 24,
+                                 align="center",
+                                 anchor_x="center")
+                arcade.draw_text(f"+ {self.mon}$",
+                                 400,
+                                 300,
+                                 arcade.color.WHITE,
+                                 24,
+                                 align="center",
+                                 anchor_x="center")
+                self.button_reset.draw()
+                self.button_menu.draw()
 
     def draw_score(self):
         score_text = f"Счет: {self.score}"
         miss_text = f"Пропущено: {self.miss}"
+        difficult_text = f"Сложность: {self.difficult}"
 
         arcade.draw_text(
             score_text,
@@ -449,10 +488,22 @@ class MyGame(arcade.View):
             anchor_y="center",
             bold=True
         )
+        arcade.draw_text(
+            difficult_text,
+            25,
+            SCREEN_HEIGHT - 110,
+            arcade.color.WHITE,
+            30,
+            align="center",
+            anchor_x="left",
+            anchor_y="center",
+            bold=True
+        )
 
     def on_update(self, delta_time):
         if self.menu:
-            pass
+            self.money += self.mon
+            self.mon = 0
         elif self.game:
             # Анимация игрока
             self.player_sprite.update_animation(delta_time)
@@ -481,7 +532,7 @@ class MyGame(arcade.View):
                     self.create_enemy()
                     self.miss += 1
 
-            if self.miss >= 10:
+            if self.miss >= self.miss_over:
                 if self.background_player:
                     self.background_player.pause()
                 if self.game_over_sound:
@@ -504,6 +555,7 @@ class MyGame(arcade.View):
 
                         enemy.remove_from_sprite_lists()
                         self.score += 1
+                        self.kill += 1
                         self.create_enemy()
 
             for enemy in self.enemy_list:
@@ -529,6 +581,32 @@ class MyGame(arcade.View):
                 e.update(delta_time)
                 if e.can_reap():
                     self.emitters.remove(e)
+
+            if self.difficult == "Easy" and self.score == 10:
+                self.enemy_list.clear()
+                self.difficult = "Normal"
+                for i in range(4):
+                    self.create_enemy()
+                self.mon += self.score // 2
+                self.score = 0
+            elif self.difficult == "Normal" and self.score == 25:
+                self.enemy_list.clear()
+                self.difficult = "Hard"
+                for i in range(5):
+                    self.create_enemy()
+                self.mon += self.score // 2
+                self.score = 0
+            elif self.difficult == "Hard" and self.score == 50:
+                self.enemy_list.clear()
+                self.difficult = "Impossible"
+                for i in range(7):
+                    self.create_enemy()
+                self.mon += self.score
+                self.score = 0
+            elif self.difficult == "Impossible" and self.score == 100:
+                self.mon += self.score * 2
+                self.win = True
+                self.game = False
         elif self.shop:
             if self.skinBlue:
                 for s in self.skins:
@@ -555,14 +633,24 @@ class MyGame(arcade.View):
                     if s.text == "Установлено":
                         s.text = ""
                 self.skin_purple.text = "Установлено"
+            elif self.skinYellow:
+                for s in self.skins:
+                    if s.text == "Установлено":
+                        s.text = ""
+                self.skin_yellow.text = "Установлено"
+            elif self.skinGrey:
+                for s in self.skins:
+                    if s.text == "Установлено":
+                        s.text = ""
+                self.skin_grey.text = "Установлено"
         else:
             pass
 
     def reset_game(self):
         # Перезапуск игры с созданием модельки игрока
-        self.money += self.score
         self.score = 0
         self.miss = 0
+        self.difficult = "Easy"
         self.bullets_list.clear()
         self.enemy_list.clear()
         self.emitters.clear()
@@ -624,6 +712,8 @@ class MyGame(arcade.View):
                 self.skinRed = False
                 self.skinOrange = False
                 self.skinPurple = False
+                self.skinYellow = False
+                self.skinGrey = False
             elif self.skin_green.is_clicked(x, y):
                 if self.money >= 100 or self.skinGreen:
                     if self.skin_green.text == "100":
@@ -634,6 +724,8 @@ class MyGame(arcade.View):
                     self.skinRed = False
                     self.skinOrange = False
                     self.skinPurple = False
+                    self.skinYellow = False
+                    self.skinGrey = False
             elif self.skin_red.is_clicked(x, y):
                 if self.money >= 100 or self.skinRed:
                     if self.skin_red.text == "100":
@@ -644,6 +736,8 @@ class MyGame(arcade.View):
                     self.skinRed = True
                     self.skinOrange = False
                     self.skinPurple = False
+                    self.skinYellow = False
+                    self.skinGrey = False
             elif self.skin_orange.is_clicked(x, y):
                 if self.money >= 100 or self.skinOrange:
                     if self.skin_orange.text == "100":
@@ -654,6 +748,8 @@ class MyGame(arcade.View):
                     self.skinRed = False
                     self.skinOrange = True
                     self.skinPurple = False
+                    self.skinYellow = False
+                    self.skinGrey = False
             elif self.skin_purple.is_clicked(x, y):
                 if self.money >= 100 or self.skinPurple:
                     if self.skin_purple.text == "100":
@@ -664,6 +760,32 @@ class MyGame(arcade.View):
                     self.skinRed = False
                     self.skinOrange = False
                     self.skinPurple = True
+                    self.skinYellow = False
+                    self.skinGrey = False
+            elif self.skin_yellow.is_clicked(x, y):
+                if self.money >= 100 or self.skinYellow:
+                    if self.skin_yellow.text == "100":
+                        self.money -= 100
+                    self.skin = "Yellow"
+                    self.skinBlue = False
+                    self.skinGreen = False
+                    self.skinRed = False
+                    self.skinOrange = False
+                    self.skinPurple = False
+                    self.skinYellow = True
+                    self.skinGrey = False
+            elif self.skin_grey.is_clicked(x, y):
+                if self.money >= 100 or self.skinGrey:
+                    if self.skin_grey.text == "100":
+                        self.money -= 100
+                    self.skin = "Grey"
+                    self.skinBlue = False
+                    self.skinGreen = False
+                    self.skinRed = False
+                    self.skinOrange = False
+                    self.skinPurple = False
+                    self.skinYellow = False
+                    self.skinGrey = True
         elif self.update:
             if self.button_exit_menu.is_clicked(x, y):
                 self.update = False
@@ -683,6 +805,7 @@ class MyGame(arcade.View):
             self.bullet.center_x = self.player_sprite.center_x
             self.bullet.center_y = self.player_sprite.center_y + self.player_sprite.height / 2
             self.bullets_list.append(self.bullet)
+            self.shot += 1
             if self.shoot_sound:
                 arcade.play_sound(self.shoot_sound, volume=0.5)
         else:
@@ -696,7 +819,15 @@ class MyGame(arcade.View):
                 self.game = False
 
     def create_enemy(self):
-        self.enemy = Enemy(f"files/enemyShip{random.randint(1, 3)}.png", 0.5, random.randint(3, 5))
+        if self.difficult == "Easy":
+            speed = random.randint(3, 4)
+        elif self.difficult == "Normal":
+            speed = random.randint(3, 5)
+        elif self.difficult == "Hard":
+            speed = random.randint(4, 6)
+        elif self.difficult == "Impossible":
+            speed = random.randint(5, 7)
+        self.enemy = Enemy(f"files/enemyShip{random.randint(1, 3)}.png", 0.5, speed)
         self.enemy.center_x = random.randint(100, SCREEN_WIDTH - 100)
         self.enemy.center_y = 650
         self.enemy_list.append(self.enemy)
