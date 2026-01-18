@@ -1,5 +1,6 @@
 import arcade
 import random
+import time
 from arcade.particles import FadeParticle, Emitter, EmitBurst
 from pyglet.graphics import Batch
 
@@ -276,6 +277,7 @@ class MyGame(arcade.View):
         # Счет
         self.money = 0
         self.mon = 0
+        self.mon2 = 0
         self.score = 0
         self.kill = 0
         self.miss = 0
@@ -422,6 +424,21 @@ class MyGame(arcade.View):
                 pass
             else:
                 # Экран Game Over с отображением финального счета
+                if self.difficult == "Easy":
+                    self.mon += self.score // 2
+                    self.score = 0
+                elif self.difficult == "Normal":
+                    self.mon += self.score
+                    self.score = 0
+                elif self.difficult == "Hard":
+                    self.mon += self.score * 2
+                    self.score = 0
+                elif self.difficult == "Impossible":
+                    self.mon += self.score * 3
+                    self.score = 0
+                if self.mon2 <= self.mon:
+                    self.mon2 += 1
+                    time.sleep(0.001)
                 arcade.draw_text("В следующий раз повезет!", 200, 550, arcade.color.RED, 30)
                 arcade.draw_text(f"Результаты:",
                                  400,
@@ -451,7 +468,7 @@ class MyGame(arcade.View):
                                  24,
                                  align="center",
                                  anchor_x="center")
-                arcade.draw_text(f"+ {self.mon}$",
+                arcade.draw_text(f"+ {self.mon2}$",
                                  400,
                                  300,
                                  arcade.color.WHITE,
@@ -594,17 +611,17 @@ class MyGame(arcade.View):
                 self.difficult = "Hard"
                 for i in range(5):
                     self.create_enemy()
-                self.mon += self.score // 2
+                self.mon += self.score
                 self.score = 0
             elif self.difficult == "Hard" and self.score == 50:
                 self.enemy_list.clear()
                 self.difficult = "Impossible"
                 for i in range(7):
                     self.create_enemy()
-                self.mon += self.score
+                self.mon += self.score * 2
                 self.score = 0
             elif self.difficult == "Impossible" and self.score == 100:
-                self.mon += self.score * 2
+                self.mon += self.score * 3
                 self.win = True
                 self.game = False
         elif self.shop:
@@ -650,6 +667,7 @@ class MyGame(arcade.View):
         # Перезапуск игры с созданием модельки игрока
         self.score = 0
         self.miss = 0
+        self.mon2 = 0
         self.difficult = "Easy"
         self.bullets_list.clear()
         self.enemy_list.clear()
