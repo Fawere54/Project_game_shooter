@@ -436,7 +436,7 @@ class MyGame(arcade.View):
                 elif self.difficult == "Impossible":
                     self.mon += self.score * 3
                     self.score = 0
-                if self.mon2 <= self.mon:
+                if self.mon2 < self.mon:
                     self.mon2 += 1
                     time.sleep(0.001)
                 arcade.draw_text("В следующий раз повезет!", 200, 550, arcade.color.RED, 30)
@@ -665,6 +665,8 @@ class MyGame(arcade.View):
 
     def reset_game(self):
         # Перезапуск игры с созданием модельки игрока
+        self.money += self.mon
+        self.mon = 0
         self.score = 0
         self.miss = 0
         self.mon2 = 0
