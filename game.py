@@ -1,7 +1,9 @@
 import arcade
 import random
 import time
+import os
 from arcade.particles import FadeParticle, Emitter, EmitBurst
+from arcade.gui import UIInputText, UIManager, UILabel
 from pyglet.graphics import Batch
 
 SPARK_TEX = [
@@ -68,6 +70,10 @@ def create_explosion(x, y):
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 SCREEN_TITLE = "Сигма-орбита"
+
+
+def save():
+    pass
 
 
 class Bullet(arcade.Sprite):
@@ -255,6 +261,7 @@ class MyGame(arcade.View):
         self.right_pressed = False
         self.up_pressed = False
         self.down_pressed = False
+        self.reg = True
         self.game = False
         self.menu = True
         self.shop = False
@@ -283,6 +290,15 @@ class MyGame(arcade.View):
         self.miss = 0
         self.miss_over = 10
         self.shot = 0
+
+        if os.path.exists('files/account.txt'):
+            with open("files/account.txt", "r", encoding="utf-8") as f:
+                file = f.read()
+                self.login = file[0]
+                self.password = file[1]
+        else:
+            self.login = ""
+            self.password = ""
 
         self.speedLVL = 1
         self.speedPrice = 10
@@ -335,6 +351,43 @@ class MyGame(arcade.View):
         self.bullets_list = arcade.SpriteList()
         self.enemy_list = arcade.SpriteList()
 
+        self.log_input = UIInputText(x=SCREEN_WIDTH // 4, y=(SCREEN_HEIGHT // 4) * 2.5, width=200, height=25)
+        self.pass_input = UIInputText(x=SCREEN_WIDTH // 4, y=(SCREEN_HEIGHT // 4) * 2, width=200, height=25)
+
+        self.log_input.text = self.login
+        self.pass_input.text = self.password
+
+        self.hello = arcade.gui.UILabel(
+            x=SCREEN_WIDTH // 7, y=(SCREEN_HEIGHT // 4) * 3.5,
+            text=f"Добро пожаловать в {SCREEN_TITLE}", font_size=30, anchor_x="left"
+        )
+
+        self.text1 = arcade.gui.UILabel(
+            x=SCREEN_WIDTH // 7, y=(SCREEN_HEIGHT // 4) * 3,
+            text="Введите свои данные", font_size=25, anchor_x="left"
+        )
+
+        self.log_print = arcade.gui.UILabel(
+            x=SCREEN_WIDTH // 7, y=(SCREEN_HEIGHT // 4) * 2.5,
+            text="Логин", font_size=20, anchor_x="left"
+        )
+        self.pass_print = arcade.gui.UILabel(
+            x=SCREEN_WIDTH // 7, y=(SCREEN_HEIGHT // 4) * 2,
+            text="Пароль", font_size=20, anchor_x="left"
+        )
+
+        self.button_reg = Button(SCREEN_WIDTH // 6, SCREEN_HEIGHT // 3, 150, 50, "Зарегистрироваться", (98, 99, 155))
+        self.button_log = Button(SCREEN_WIDTH // 1.5, SCREEN_HEIGHT // 3, 150, 50, "Войти", (98, 99, 155))
+
+        self.reg_list = UIManager()
+        self.reg_list.enable()
+        self.reg_list.add(self.log_input)
+        self.reg_list.add(self.pass_input)
+        self.reg_list.add(self.log_print)
+        self.reg_list.add(self.pass_print)
+        self.reg_list.add(self.hello)
+        self.reg_list.add(self.text1)
+
         self.skin_blue = Item("files/PlayerBlue.png", 100, 450, 100, 100, "Установлено")
         self.skin_green = Item("files/PlayerGreen.png", 250, 450, 100, 100, "100")
         self.skin_red = Item("files/PlayerRed.png", 400, 450, 100, 100, "100")
@@ -372,10 +425,16 @@ class MyGame(arcade.View):
         # Отрисовка всех спрайтов
         self.clear()
         if self.menu:
-            self.menu_sprite.draw()
-            self.button_play.draw()
-            self.button_skin.draw()
-            self.button_update.draw()
+            if self.login == "" or self.password == "":
+                self.menu_sprite.draw()
+                self.reg_list.draw()
+                self.button_reg.draw()
+                self.button_log.draw()
+            else:
+                self.menu_sprite.draw()
+                self.button_play.draw()
+                self.button_skin.draw()
+                self.button_update.draw()
 
         elif self.shop:
             self.menu_sprite.draw()
@@ -711,16 +770,25 @@ class MyGame(arcade.View):
     def on_mouse_press(self, x, y, button, modifiers):
         # Создаем лазер при ЛКМ
         if self.menu:
-            if self.button_play.is_clicked(x, y):
-                self.game = True
-                self.menu = False
-                self.reset_game()
-            elif self.button_skin.is_clicked(x, y):
-                self.menu = False
-                self.shop = True
-            elif self.button_update.is_clicked(x, y):
-                self.menu = False
-                self.update = True
+            if self.password == "" or self.login == "":
+                if self.button_reg.is_clicked(x, y):
+                    if self.pass_input.text != "" and self.log_input.text != "":
+                        self.password = self.pass_input.text
+                        self.login = self.log_input.text
+                        self.reset_game()
+                        with open("files/account.txt", "w", encoding="utf-8") as f:
+                            f.writelines(f"{self.login}, {self.password}")
+            else:
+                if self.button_play.is_clicked(x, y):
+                    self.game = True
+                    self.menu = False
+                    self.reset_game()
+                elif self.button_skin.is_clicked(x, y):
+                    self.menu = False
+                    self.shop = True
+                elif self.button_update.is_clicked(x, y):
+                    self.menu = False
+                    self.update = True
         elif self.shop:
             if self.button_exit_menu.is_clicked(x, y):
                 self.shop = False
