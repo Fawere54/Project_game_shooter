@@ -470,6 +470,9 @@ class MyGame(arcade.View):
             text="Пароль", font_size=20, anchor_x="left"
         )
 
+        self.error_message = ""
+        self.error_color = arcade.color.RED
+
         self.button_reg = Button(SCREEN_WIDTH // 6, SCREEN_HEIGHT // 3, 150, 50, "Зарегистрироваться", (98, 99, 155))
         self.button_log = Button(SCREEN_WIDTH // 1.5, SCREEN_HEIGHT // 3, 150, 50, "Войти", (98, 99, 155))
 
@@ -540,6 +543,13 @@ class MyGame(arcade.View):
                 self.button_play.draw()
                 self.button_skin.draw()
                 self.button_update.draw()
+            if self.error_message:
+                arcade.draw_text(self.error_message,
+                                 SCREEN_WIDTH / 2,
+                                 150,  # Координата по высоте (под кнопками)
+                                 self.error_color,
+                                 font_size=14,
+                                 anchor_x="center")
 
         elif self.shop:
             self.menu_sprite.draw()
@@ -853,6 +863,7 @@ class MyGame(arcade.View):
 
     def on_key_press(self, key, modifiers):
         # Пауза
+        self.error_message = ""
         if key == arcade.key.SPACE and self.game:
             pause_view = PauseView(self)
             self.window.show_view(pause_view)
@@ -883,47 +894,57 @@ class MyGame(arcade.View):
         print(db.fetch_all('''SELECT login FROM users'''))
         if self.menu:
             if self.password == "" or self.login == "":
+                # Окно регистрации
                 if self.button_reg.is_clicked(x, y):
-                    if self.pass_input.text.strip() != "" and self.log_input.text.strip() != "":
-                        all_users = db.fetch_all('''SELECT login FROM users''')
-                        existing_logins = [row[0] for row in all_users]
-                        if self.log_input.text not in existing_logins:
-                            self.password = self.pass_input.text
-                            self.login = self.log_input.text
+                    login_text = self.log_input.text.strip()
+                    pass_text = self.pass_input.text.strip()
+                    if login_text != "" and pass_text != "":
+                        user_exists = db.fetch_one("SELECT login FROM users WHERE login = ?", (login_text,))
+                        if user_exists:
+                            self.error_message = "Ошибка: Аккаунт уже зарегистрирован!"
+                        else:
+                            self.error_message = ""
+                            self.login = login_text
+                            self.password = pass_text
                             db.create()
                             sql_user = """INSERT INTO users (login, password, money, skin, skin1, skin2, 
-                                                          skin3, skin4, skin5, skin6, skin7, speed) 
-                                                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
-                            data_user = [(self.login, self.password, self.money, self.skin,
-                                          str(self.skinBlue), str(self.skinGreen), str(self.skinRed),
-                                          str(self.skinOrange), str(self.skinPurple), str(self.skinYellow),
-                                          str(self.skinGrey), str(self.speedLVL))]
-                            db.executemany(sql_user, data_user)
+                                                      skin3, skin4, skin5, skin6, skin7, speed) 
+                                                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+                            data_user = [(self.login, self.password, 0, "Default",
+                                          "False", "False", "False", "False", "False", "False", "False", "1")]
+                            db.do(sql_user, data_user[0])
                             with open("files/account.txt", "w", encoding="utf-8") as f:
                                 f.write(f"{self.login} {self.password}")
+                            print("Регистрация успешна!")
                             self.reset_game()
                 elif self.button_log.is_clicked(x, y):
-                    if self.pass_input.text.strip() != "" and self.log_input.text.strip() != "":
-                        user = db.fetch_one(
-                            "SELECT * FROM users WHERE login = ? AND password = ?",
-                            (self.log_input.text, self.pass_input.text)
-                        )
-                        if user:
-                            self.login, self.password = user[0], user[1]
-                            self.money = int(user[2])
-                            self.skin = user[3]
-                            self.skinBlue = user[4] == 'True'
-                            self.skinGreen = user[5] == 'True'
-                            self.skinRed = user[6] == 'True'
-                            self.skinOrange = user[7] == 'True'
-                            self.skinPurple = user[8] == 'True'
-                            self.skinYellow = user[9] == 'True'
-                            self.skinGrey = user[10] == 'True'
-                            self.speedLVL = int(user[11])
-                            self.player_speed = 5 + (self.speedLVL - 1)
-                            with open("files/account.txt", "w", encoding="utf-8") as f:
-                                f.write(f"{self.login} {self.password}")
-                            self.reset_game()
+                    login_text = self.log_input.text.strip()
+                    pass_text = self.pass_input.text.strip()
+                    if login_text != "" and pass_text != "":
+                        user_data = db.fetch_one("SELECT * FROM users WHERE login = ?", (login_text,))
+                        if not user_data:
+                            self.error_message = "Ошибка: Аккаунт не найден!"
+                        else:
+                            if user_data[1] == pass_text:
+                                self.login = user_data[0]
+                                self.password = user_data[1]
+                                self.money = int(user_data[2])
+                                self.skin = user_data[3]
+                                self.skinBlue = user_data[4] == 'True'
+                                self.skinGreen = user_data[5] == 'True'
+                                self.skinRed = user_data[6] == 'True'
+                                self.skinOrange = user_data[7] == 'True'
+                                self.skinPurple = user_data[8] == 'True'
+                                self.skinYellow = user_data[9] == 'True'
+                                self.skinGrey = user_data[10] == 'True'
+                                self.speedLVL = int(user_data[11])
+                                self.player_speed = 5 + (self.speedLVL - 1)
+                                with open("files/account.txt", "w", encoding="utf-8") as f:
+                                    f.write(f"{self.login} {self.password}")
+                                self.error_message = ""
+                                self.reset_game()
+                            else:
+                                self.error_message = "Ошибка: Неверный пароль!"
             else:
                 if self.button_play.is_clicked(x, y):
                     self.game = True
