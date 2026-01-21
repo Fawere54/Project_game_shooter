@@ -2,6 +2,7 @@ import arcade
 import random
 import time
 import os
+import sqlite3
 from arcade.particles import FadeParticle, Emitter, EmitBurst
 from arcade.gui import UIInputText, UIManager, UILabel
 from pyglet.graphics import Batch
@@ -70,10 +71,6 @@ def create_explosion(x, y):
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 SCREEN_TITLE = "Сигма-орбита"
-
-
-def save():
-    pass
 
 
 class Bullet(arcade.Sprite):
@@ -253,6 +250,108 @@ class Player(arcade.Sprite):
             self.texture = self.idle_texture
 
 
+class Database:
+    def __init__(self, db_name='files/DB_Game.db'):
+        self.db_name = db_name
+        self.conn = None
+        self.cursor = None
+
+    def open_connect(self):
+        self.conn = sqlite3.connect(self.db_name)
+        self.cursor = self.conn.cursor()
+
+    def close(self):
+        if self.cursor:
+            self.cursor.close()
+        if self.conn:
+            self.conn.close()
+
+    def do(self, query, params=None):
+        self.open_connect()
+        if params:
+            self.cursor.execute(query, params)
+        else:
+            self.cursor.execute(query)
+        self.conn.commit()
+        self.close()
+
+    def create(self):
+        self.open_connect()
+        self.cursor.execute('''PRAGMA foreign_keys=on''')
+
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                login VARCHAR,
+                password VARCHAR,
+                money VARCHAR,
+                skin VARCHAR,
+                skin1 VARCHAR,
+                skin2 VARCHAR,
+                skin3 VARCHAR,
+                skin4 VARCHAR,
+                skin5 VARCHAR,
+                skin6 VARCHAR,
+                skin7 VARCHAR,
+                speed VARCHAR
+            )
+        ''')
+        self.conn.commit()
+        self.close()
+
+    def drop_tables(self):
+        self.open_connect()
+        self.cursor.execute('DROP TABLE IF EXISTS users')
+        self.conn.commit()
+        self.close()
+
+    def executemany(self, sql, args):
+        self.open_connect()
+        self.cursor.executemany(sql, args)
+        self.conn.commit()
+        self.close()
+
+    def fetch_all(self, query, params=None):
+        self.open_connect()
+        if params:
+            self.cursor.execute(query, params)
+        else:
+            self.cursor.execute(query)
+        result = self.cursor.fetchall()
+        self.close()
+        return result
+
+    def fetch_one(self, query, params=None):
+        self.open_connect()
+        if params:
+            self.cursor.execute(query, params)
+        else:
+            self.cursor.execute(query)
+        result = self.cursor.fetchone()
+        self.close()
+        return result
+
+
+def save(login, password, money, skin, skin1, skin2, skin3, skin4, skin5, skin6, skin7, speed):
+    db = Database()
+    sql_update = """
+                UPDATE users SET 
+                    password = ?, 
+                    money = ?, 
+                    skin = ?, 
+                    skin1 = ?, 
+                    skin2 = ?, 
+                    skin3 = ?, 
+                    skin4 = ?, 
+                    skin5 = ?, 
+                    skin6 = ?, 
+                    skin7 = ?, 
+                    speed = ?
+                WHERE login = ?
+            """
+    db.do(sql_update, (password, money, skin, skin1, skin2, skin3, skin4,
+                       skin5, skin6, skin7, speed, login))
+
+
 class MyGame(arcade.View):
     def __init__(self):
         super().__init__()
@@ -290,15 +389,6 @@ class MyGame(arcade.View):
         self.miss = 0
         self.miss_over = 10
         self.shot = 0
-
-        if os.path.exists('files/account.txt'):
-            with open("files/account.txt", "r", encoding="utf-8") as f:
-                file = f.read()
-                self.login = file[0]
-                self.password = file[1]
-        else:
-            self.login = ""
-            self.password = ""
 
         self.speedLVL = 1
         self.speedPrice = 10
@@ -351,6 +441,9 @@ class MyGame(arcade.View):
         self.bullets_list = arcade.SpriteList()
         self.enemy_list = arcade.SpriteList()
 
+        self.login = ""
+        self.password = ""
+
         self.log_input = UIInputText(x=SCREEN_WIDTH // 4, y=(SCREEN_HEIGHT // 4) * 2.5, width=200, height=25)
         self.pass_input = UIInputText(x=SCREEN_WIDTH // 4, y=(SCREEN_HEIGHT // 4) * 2, width=200, height=25)
 
@@ -387,6 +480,13 @@ class MyGame(arcade.View):
         self.reg_list.add(self.pass_print)
         self.reg_list.add(self.hello)
         self.reg_list.add(self.text1)
+
+        if os.path.exists('files/account.txt'):
+            with open("files/account.txt", "r", encoding="utf-8") as f:
+                file = f.read().split()
+                print(file)
+                self.log_input.text = file[0]
+                self.pass_input.text = file[1]
 
         self.skin_blue = Item("files/PlayerBlue.png", 100, 450, 100, 100, "Установлено")
         self.skin_green = Item("files/PlayerGreen.png", 250, 450, 100, 100, "100")
@@ -577,6 +677,9 @@ class MyGame(arcade.View):
         )
 
     def on_update(self, delta_time):
+        if self.login != "" and self.password != "":
+            save(self.login, self.password, self.money, self.skin, self.skinBlue, self.skinGreen, self.skinRed,
+             self.skinOrange, self.skinPurple, self.skinYellow, self.skinGrey, self.speedLVL)
         if self.menu:
             self.money += self.mon
             self.mon = 0
@@ -769,15 +872,26 @@ class MyGame(arcade.View):
 
     def on_mouse_press(self, x, y, button, modifiers):
         # Создаем лазер при ЛКМ
+        db = Database()
+        print(db.fetch_all('''SELECT login FROM users'''))
         if self.menu:
             if self.password == "" or self.login == "":
                 if self.button_reg.is_clicked(x, y):
                     if self.pass_input.text != "" and self.log_input.text != "":
-                        self.password = self.pass_input.text
-                        self.login = self.log_input.text
-                        self.reset_game()
-                        with open("files/account.txt", "w", encoding="utf-8") as f:
-                            f.writelines(f"{self.login}, {self.password}")
+                        if not self.log_input.text in db.fetch_all('''SELECT login FROM users'''):
+                            self.password = self.pass_input.text
+                            self.login = self.log_input.text
+                            self.reset_game()
+                            with open("files/account.txt", "w", encoding="utf-8") as f:
+                                f.writelines(f"{self.login}, {self.password}")
+                            sql_user = """INSERT INTO users (login, password, money, skin, skin1, skin2, skin3, skin4, skin5, skin6, skin7, speed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+                            data_user = [(self.login, self.password, self.money, self.skin, self.skinBlue, self.skinGreen, self.skinRed, self.skinOrange, self.skinPurple, self.skinYellow, self.skinGrey, self.speedLVL)]
+                            db.create()
+                            db.executemany(sql_user, data_user)
+                elif self.button_log.is_clicked(x, y):
+                    if self.pass_input != "" and self.log_input != "":
+                        for d in db.fetch_all('''SELECT * FROM users'''):
+                            print(d)
             else:
                 if self.button_play.is_clicked(x, y):
                     self.game = True
