@@ -202,8 +202,8 @@ class Item:
     def draw(self):
         self.spriteL.draw()
         arcade.draw_text(self.text, self.x, self.y - self.height // 2,
-                             arcade.color.WHITE, 20,
-                             align="center", anchor_x="center", anchor_y="top")
+                         arcade.color.WHITE, 20,
+                         align="center", anchor_x="center", anchor_y="top")
 
     def is_clicked(self, x, y):
         left = self.sprite.center_x - self.width / 2
@@ -225,6 +225,7 @@ class Player(arcade.Sprite):
         self.is_shooting = False
         self.shoot_timer = 0
         self.current_texture_idx = 0
+        self.anim_speed = 0.1
         self.anim_speed = 0.1
         self.anim_timer = 0
         self.center_x = x
@@ -348,8 +349,8 @@ def save(login, password, money, skin, skin1, skin2, skin3, skin4, skin5, skin6,
                     speed = ?
                 WHERE login = ?
             """
-    db.do(sql_update, (password, money, skin, skin1, skin2, skin3, skin4,
-                       skin5, skin6, skin7, speed, login))
+    db.do(sql_update, (password, str(money), skin, str(skin1), str(skin2), str(skin3),
+                       str(skin4), str(skin5), str(skin6), str(skin7), str(speed), login))
 
 
 class MyGame(arcade.View):
@@ -381,7 +382,7 @@ class MyGame(arcade.View):
         self.difficult = "Easy"
 
         # Счет
-        self.money = 0
+        self.money = 300
         self.mon = 0
         self.mon2 = 0
         self.score = 0
@@ -428,7 +429,7 @@ class MyGame(arcade.View):
         self.player_sprites = arcade.SpriteList()
         self.player_sprites.append(self.player_sprite)
 
-        self.coin = arcade.Sprite("files/coin.png",scale=1.0)
+        self.coin = arcade.Sprite("files/coin.png", scale=1.0)
         self.coin.center_x = 50
         self.coin.center_y = 550
         self.coin.width = 50
@@ -496,11 +497,13 @@ class MyGame(arcade.View):
         self.skin_yellow = Item("files/PlayerYellow.png", 100, 250, 100, 100, "100")
         self.skin_grey = Item("files/PlayerGrey.png", 250, 250, 100, 100, "100")
 
-        self.skins = [self.skin_blue, self.skin_green, self.skin_red, self.skin_orange, self.skin_purple, self.skin_yellow, self.skin_grey]
+        self.skins = [self.skin_blue, self.skin_green, self.skin_red, self.skin_orange, self.skin_purple,
+                      self.skin_yellow, self.skin_grey]
 
         self.button_play = Button(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, 200, 75, "Играть", (98, 99, 155))
         self.button_skin = Button(SCREEN_WIDTH // 8, SCREEN_HEIGHT // 2, 150, 75, "Скины", (98, 99, 155))
-        self.button_update = Button(SCREEN_WIDTH - SCREEN_WIDTH // 8, SCREEN_HEIGHT // 2, 150, 75, "Улучшения", (98, 99, 155))
+        self.button_update = Button(SCREEN_WIDTH - SCREEN_WIDTH // 8, SCREEN_HEIGHT // 2, 150, 75, "Улучшения",
+                                    (98, 99, 155))
         self.button_reset = Button(400, SCREEN_HEIGHT // 3, 100, 75, "Заново", (98, 99, 155))
         self.button_menu = Button(200, SCREEN_HEIGHT // 3, 100, 75, "В меню", (98, 99, 155))
         self.button_exit_menu = Button(60, 35, 100, 50, "Назад", (98, 99, 155))
@@ -513,6 +516,8 @@ class MyGame(arcade.View):
         self.create_enemy()
 
     def setup(self):
+        db = Database()
+        db.create()
         self.shoot_sound = arcade.load_sound("files/shoot.wav")
         self.background_music = arcade.load_sound("files/space.ogg")
         self.game_over_sound = arcade.load_sound("files/game_over.wav")
@@ -543,12 +548,12 @@ class MyGame(arcade.View):
                 s.draw()
             self.button_exit_menu.draw()
             arcade.draw_text(self.money,
-                              80,
-                              537,
-                              arcade.color.WHITE,
-                              30,
-                              align="center",
-                              anchor_x="left")
+                             80,
+                             537,
+                             arcade.color.WHITE,
+                             30,
+                             align="center",
+                             anchor_x="left")
 
         elif self.update:
             self.menu_sprite.draw()
@@ -678,8 +683,10 @@ class MyGame(arcade.View):
 
     def on_update(self, delta_time):
         if self.login != "" and self.password != "":
-            save(self.login, self.password, self.money, self.skin, self.skinBlue, self.skinGreen, self.skinRed,
-             self.skinOrange, self.skinPurple, self.skinYellow, self.skinGrey, self.speedLVL)
+            save(self.login, self.password, self.money, self.skin,
+                 self.skinBlue, self.skinGreen, self.skinRed,
+                 self.skinOrange, self.skinPurple, self.skinYellow,
+                 self.skinGrey, self.speedLVL)
         if self.menu:
             self.money += self.mon
             self.mon = 0
@@ -877,21 +884,46 @@ class MyGame(arcade.View):
         if self.menu:
             if self.password == "" or self.login == "":
                 if self.button_reg.is_clicked(x, y):
-                    if self.pass_input.text != "" and self.log_input.text != "":
-                        if not self.log_input.text in db.fetch_all('''SELECT login FROM users'''):
+                    if self.pass_input.text.strip() != "" and self.log_input.text.strip() != "":
+                        all_users = db.fetch_all('''SELECT login FROM users''')
+                        existing_logins = [row[0] for row in all_users]
+                        if self.log_input.text not in existing_logins:
                             self.password = self.pass_input.text
                             self.login = self.log_input.text
-                            self.reset_game()
-                            with open("files/account.txt", "w", encoding="utf-8") as f:
-                                f.writelines(f"{self.login}, {self.password}")
-                            sql_user = """INSERT INTO users (login, password, money, skin, skin1, skin2, skin3, skin4, skin5, skin6, skin7, speed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
-                            data_user = [(self.login, self.password, self.money, self.skin, self.skinBlue, self.skinGreen, self.skinRed, self.skinOrange, self.skinPurple, self.skinYellow, self.skinGrey, self.speedLVL)]
                             db.create()
+                            sql_user = """INSERT INTO users (login, password, money, skin, skin1, skin2, 
+                                                          skin3, skin4, skin5, skin6, skin7, speed) 
+                                                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+                            data_user = [(self.login, self.password, self.money, self.skin,
+                                          str(self.skinBlue), str(self.skinGreen), str(self.skinRed),
+                                          str(self.skinOrange), str(self.skinPurple), str(self.skinYellow),
+                                          str(self.skinGrey), str(self.speedLVL))]
                             db.executemany(sql_user, data_user)
+                            with open("files/account.txt", "w", encoding="utf-8") as f:
+                                f.write(f"{self.login} {self.password}")
+                            self.reset_game()
                 elif self.button_log.is_clicked(x, y):
-                    if self.pass_input != "" and self.log_input != "":
-                        for d in db.fetch_all('''SELECT * FROM users'''):
-                            print(d)
+                    if self.pass_input.text.strip() != "" and self.log_input.text.strip() != "":
+                        user = db.fetch_one(
+                            "SELECT * FROM users WHERE login = ? AND password = ?",
+                            (self.log_input.text, self.pass_input.text)
+                        )
+                        if user:
+                            self.login, self.password = user[0], user[1]
+                            self.money = int(user[2])
+                            self.skin = user[3]
+                            self.skinBlue = user[4] == 'True'
+                            self.skinGreen = user[5] == 'True'
+                            self.skinRed = user[6] == 'True'
+                            self.skinOrange = user[7] == 'True'
+                            self.skinPurple = user[8] == 'True'
+                            self.skinYellow = user[9] == 'True'
+                            self.skinGrey = user[10] == 'True'
+                            self.speedLVL = int(user[11])
+                            self.player_speed = 5 + (self.speedLVL - 1)
+                            with open("files/account.txt", "w", encoding="utf-8") as f:
+                                f.write(f"{self.login} {self.password}")
+                            self.reset_game()
             else:
                 if self.button_play.is_clicked(x, y):
                     self.game = True
@@ -918,11 +950,11 @@ class MyGame(arcade.View):
                 self.skinGrey = False
             elif self.skin_green.is_clicked(x, y):
                 if self.money >= 100 or self.skinGreen:
-                    if self.skin_green.text == "100":
+                    if not self.skinGreen:
                         self.money -= 100
+                        self.skinGreen = True
                     self.skin = "Green"
                     self.skinBlue = False
-                    self.skinGreen = True
                     self.skinRed = False
                     self.skinOrange = False
                     self.skinPurple = False
@@ -930,56 +962,57 @@ class MyGame(arcade.View):
                     self.skinGrey = False
             elif self.skin_red.is_clicked(x, y):
                 if self.money >= 100 or self.skinRed:
-                    if self.skin_red.text == "100":
+                    if not self.skinRed:
                         self.money -= 100
+                        self.skinRed = True
                     self.skin = "Red"
                     self.skinBlue = False
                     self.skinGreen = False
-                    self.skinRed = True
                     self.skinOrange = False
                     self.skinPurple = False
                     self.skinYellow = False
                     self.skinGrey = False
             elif self.skin_orange.is_clicked(x, y):
                 if self.money >= 100 or self.skinOrange:
-                    if self.skin_orange.text == "100":
+                    if not self.skinOrange:
                         self.money -= 100
+                        self.skinOrange = True
                     self.skin = "Orange"
                     self.skinBlue = False
                     self.skinGreen = False
                     self.skinRed = False
-                    self.skinOrange = True
                     self.skinPurple = False
                     self.skinYellow = False
                     self.skinGrey = False
             elif self.skin_purple.is_clicked(x, y):
                 if self.money >= 100 or self.skinPurple:
-                    if self.skin_purple.text == "100":
+                    if not self.skinPurple:
                         self.money -= 100
+                        self.skinPurple = True
                     self.skin = "Purple"
                     self.skinBlue = False
                     self.skinGreen = False
                     self.skinRed = False
                     self.skinOrange = False
-                    self.skinPurple = True
                     self.skinYellow = False
                     self.skinGrey = False
             elif self.skin_yellow.is_clicked(x, y):
                 if self.money >= 100 or self.skinYellow:
-                    if self.skin_yellow.text == "100":
+                    if not self.skinYellow:
                         self.money -= 100
+                        self.skinYellow = True
                     self.skin = "Yellow"
                     self.skinBlue = False
                     self.skinGreen = False
                     self.skinRed = False
                     self.skinOrange = False
                     self.skinPurple = False
-                    self.skinYellow = True
                     self.skinGrey = False
             elif self.skin_grey.is_clicked(x, y):
                 if self.money >= 100 or self.skinGrey:
-                    if self.skin_grey.text == "100":
+                    if not self.skinGrey:
                         self.money -= 100
+                        self.skinGrey = True
                     self.skin = "Grey"
                     self.skinBlue = False
                     self.skinGreen = False
@@ -987,7 +1020,6 @@ class MyGame(arcade.View):
                     self.skinOrange = False
                     self.skinPurple = False
                     self.skinYellow = False
-                    self.skinGrey = True
         elif self.update:
             if self.button_exit_menu.is_clicked(x, y):
                 self.update = False
@@ -1045,3 +1077,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    print(2714)
