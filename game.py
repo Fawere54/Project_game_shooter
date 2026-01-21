@@ -579,7 +579,7 @@ class MyGame(arcade.View):
             arcade.draw_text("Скорость", 100, 450, arcade.color.WHITE, 24)
             arcade.draw_text(f"{self.speedLVL} LVL", 127, 420, arcade.color.WHITE, 24)
             arcade.draw_text(f"{self.speedPrice} Монет", 160, 380, arcade.color.WHITE, 20, anchor_x="center")
-            if self.speedPrice != "MAX":
+            if self.speedLVL < 5:
                 self.button_update_speed.draw()
 
         elif self.game:
